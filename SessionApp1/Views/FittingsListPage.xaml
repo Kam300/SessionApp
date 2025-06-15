@@ -1,0 +1,36 @@
+﻿<Page x:Class="SessionApp1.Views.FittingsListPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Список фурнитуры"
+      Background="#FFE0D5CA">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Список фурнитуры" FontSize="24" FontWeight="Bold" 
+                   Foreground="Black" Margin="0,0,0,20"/>
+
+        <DataGrid x:Name="FittingsDataGrid" Grid.Row="1" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="False" 
+                  CanUserDeleteRows="False"
+                  AlternatingRowBackground="#FFF5F5F5"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Артикул" Binding="{Binding Article}" Width="120"/>
+                <DataGridTextColumn Header="Название" Binding="{Binding Name}" Width="200"/>
+                <DataGridTextColumn Header="Ширина (мм)" Binding="{Binding WidthMm}" Width="100"/>
+                <DataGridTextColumn Header="Длина (мм)" Binding="{Binding LengthMm}" Width="100"/>
+                <DataGridTextColumn Header="Ед. измерения" Binding="{Binding DimensionUnit}" Width="120"/>
+                <DataGridTextColumn Header="Вес" Binding="{Binding WeightValue}" Width="80"/>
+                <DataGridTextColumn Header="Ед. веса" Binding="{Binding WeightUnit}" Width="80"/>
+                <DataGridTextColumn Header="Тип" Binding="{Binding TypeName}" Width="120"/>
+                <DataGridTextColumn Header="Цена" Binding="{Binding Price, StringFormat=C}" Width="100"/>
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</Page>
