@@ -170,9 +170,9 @@ namespace SessionApp1.Services
                 f.name,
                 f.width_mm,
                 f.length_mm,
-                COALESCE(f.dimension_unit, '') as dimension_unit,
+                COALESCE(f.dimension_unit, 'мм') as dimension_unit,
                 f.weight_value,
-                COALESCE(f.weight_unit, '') as weight_unit,
+                COALESCE(f.weight_unit, 'г') as weight_unit,
                 f.type_code,
                 f.image_path,
                 f.price,
@@ -191,11 +191,11 @@ namespace SessionApp1.Services
                         Name = reader.GetString("name"),
                         WidthMm = reader.GetDecimal("width_mm"),
                         LengthMm = reader.GetDecimal("length_mm"),
-                        DimensionUnit = reader.GetString("dimension_unit"), // Теперь всегда строка
+                        DimensionUnit = reader.GetString("dimension_unit"),
                         WeightValue = reader.GetDecimal("weight_value"),
-                        WeightUnit = reader.GetString("weight_unit"), // Теперь всегда строка
+                        WeightUnit = reader.GetString("weight_unit"),
                         TypeCode = reader.GetInt32("type_code"),
-                        ImagePath = reader.GetString("image_path"),
+                        ImagePath = reader.GetString("image_path"), // Используем путь как есть из БД
                         Price = reader.GetDecimal("price"),
                         TypeName = reader.GetString("typename")
                     });
@@ -207,6 +207,7 @@ namespace SessionApp1.Services
             }
             return fittings;
         }
+
 
         public async Task<List<ManufacturedGood>> GetManufacturedGoodsAsync()
         {
