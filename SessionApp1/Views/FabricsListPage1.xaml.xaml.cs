@@ -14,7 +14,6 @@ namespace SessionApp1.Views
             _databaseService = new DatabaseService();
             LoadFabrics();
         }
-
         private async void LoadFabrics()
         {
             try

@@ -33,5 +33,15 @@ namespace SessionApp1.Views
         {
             ContentFrame.Navigate(new FittingsListPage());
         }
+        private void MaterialStockButton_Click(object sender, RoutedEventArgs e)
+        {
+            ContentFrame.Navigate(new MaterialStockPage());
+        }
+
+        private void MaterialReceiptButton_Click(object sender, RoutedEventArgs e)
+        {
+            ContentFrame.Navigate(new MaterialReceiptPage());
+        }
+
     }
 }

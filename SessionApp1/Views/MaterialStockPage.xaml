@@ -1,0 +1,36 @@
+﻿<Page x:Class="SessionApp1.Views.MaterialStockPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      Title="Учет остатков материалов"
+      Background="#FFE0D5CA">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Text="Учет остатков материалов" FontSize="24" FontWeight="Bold" 
+                   Foreground="Black" Margin="0,0,0,20"/>
+
+        <!-- Переключатель типа материалов -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,20">
+            <RadioButton x:Name="FabricsRadio" Content="Ткани" FontSize="16" 
+                         IsChecked="True" Margin="0,0,20,0" 
+                         Checked="MaterialType_Changed"/>
+            <RadioButton x:Name="FittingsRadio" Content="Фурнитура" FontSize="16" 
+                         Checked="MaterialType_Changed"/>
+        </StackPanel>
+
+        <!-- DataGrid для отображения остатков -->
+        <DataGrid x:Name="MaterialStockDataGrid" Grid.Row="2" 
+                  AutoGenerateColumns="False" 
+                  CanUserAddRows="False" 
+                  CanUserDeleteRows="False"
+                  AlternatingRowBackground="#FFF5F5F5"
+                  GridLinesVisibility="Horizontal"
+                  HeadersVisibility="Column">
+        </DataGrid>
+    </Grid>
+</Page>

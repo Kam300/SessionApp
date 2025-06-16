@@ -24,18 +24,28 @@
         </Border>
 
         <!-- Навигационная панель -->
+        <!-- Навигационная панель -->
         <Border Grid.Row="1" Background="White" Padding="20,10">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button x:Name="FabricsButton" Content="Ткани" 
-                        FontSize="16" Padding="20,10" Margin="0,0,20,0"
+                        FontSize="16" Padding="20,10" Margin="0,0,10,0"
                         Background="#FFD1FCFC" Foreground="Black"
                         Click="FabricsButton_Click"/>
                 <Button x:Name="FittingsButton" Content="Фурнитура" 
-                        FontSize="16" Padding="20,10"
+                        FontSize="16" Padding="20,10" Margin="0,0,10,0"
                         Background="#FFD1FCFC" Foreground="Black"
                         Click="FittingsButton_Click"/>
+                <Button x:Name="MaterialStockButton" Content="Учет остатков" 
+                        FontSize="16" Padding="20,10" Margin="0,0,10,0"
+                        Background="#FFD1FCFC" Foreground="Black"
+                        Click="MaterialStockButton_Click"/>
+                <Button x:Name="MaterialReceiptButton" Content="Поступление" 
+                        FontSize="16" Padding="20,10"
+                        Background="#FFD1FCFC" Foreground="Black"
+                        Click="MaterialReceiptButton_Click"/>
             </StackPanel>
         </Border>
+
 
         <!-- Основной контент -->
         <Frame x:Name="ContentFrame" Grid.Row="2" NavigationUIVisibility="Hidden"/>

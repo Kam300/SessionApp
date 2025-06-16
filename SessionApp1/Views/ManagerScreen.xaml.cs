@@ -28,5 +28,10 @@ namespace SessionApp1.Views
         {
             ContentFrame.Navigate(new ProductsListPage());
         }
+        private void DesignerButton_Click(object sender, RoutedEventArgs e)
+        {
+            ContentFrame.Navigate(new ProductDesignerPage());
+        }
+
     }
 }
