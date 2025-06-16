@@ -3,30 +3,25 @@ using SessionApp1.Models;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.IO;
-using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows;
 
 namespace SessionApp1.Services
 {
     public class DatabaseService
     {
         private readonly string _connectionString;
-        private readonly string _masterConnectionString;
 
         public DatabaseService()
         {
-            _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432";
-            _masterConnectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
+            _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
         }
 
         public async Task InitializeDatabaseAsync()
         {
             try
             {
-                await CreateDatabaseIfNotExistsAsync();
-                await CreateTablesAndFunctionsAsync();
-                await ImportCsvDataAsync();
+                await CreateFunctionsAsync();
             }
             catch (Exception ex)
             {
@@ -34,22 +29,7 @@ namespace SessionApp1.Services
             }
         }
 
-        private async Task CreateDatabaseIfNotExistsAsync()
-        {
-            using var connection = new NpgsqlConnection(_masterConnectionString);
-            await connection.OpenAsync();
-
-            var checkDbCommand = new NpgsqlCommand("SELECT 1 FROM pg_database WHERE datname = 'ff'", connection);
-            var dbExists = await checkDbCommand.ExecuteScalarAsync();
-
-            if (dbExists == null)
-            {
-                var createDbCommand = new NpgsqlCommand("CREATE DATABASE ff", connection);
-                await createDbCommand.ExecuteNonQueryAsync();
-            }
-        }
-
-        private async Task CreateTablesAndFunctionsAsync()
+        private async Task CreateFunctionsAsync()
         {
             using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync();
@@ -58,117 +38,7 @@ namespace SessionApp1.Services
 -- Включение расширения для хеширования паролей
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Удаление существующих таблиц
-DROP TABLE IF EXISTS orderitems, orders, users, roles, specificationsfabric, specificationsfitting, 
-fabricstock, fittingstock, fabrics, manufacturedgoods, fittings, lookupfabricnames, lookupcolors, 
-lookuppatterns, lookupcompositions, lookupfittingtypes CASCADE;
-
--- Создание таблиц
-CREATE TABLE roles (
-    id SERIAL PRIMARY KEY,
-    name TEXT UNIQUE NOT NULL
-);
-
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    roleid INT NOT NULL REFERENCES roles(id),
-    fullname TEXT NOT NULL,
-    login TEXT UNIQUE NOT NULL,
-    passwordhash TEXT NOT NULL
-);
-
--- Справочные таблицы
-CREATE TABLE lookupfabricnames (
-    id INT PRIMARY KEY,
-    name TEXT
-);
-
-CREATE TABLE lookupcolors (
-    id INT PRIMARY KEY,
-    name TEXT
-);
-
-CREATE TABLE lookuppatterns (
-    id INT PRIMARY KEY,
-    name TEXT
-);
-
-CREATE TABLE lookupcompositions (
-    id INT PRIMARY KEY,
-    name TEXT
-);
-
-CREATE TABLE lookupfittingtypes (
-    id INT PRIMARY KEY,
-    name TEXT
-);
-
--- Основные таблицы
-CREATE TABLE fabrics (
-    article VARCHAR(50) PRIMARY KEY,
-    namecode INT,
-    colorcode INT,
-    patterncode INT,
-    imagepath TEXT,
-    compositioncode INT,
-    widthmm INT,
-    lengthmm INT,
-    unit VARCHAR(20),
-    price NUMERIC(10,2)
-);
-
-CREATE TABLE fittings (
-    article VARCHAR(50) PRIMARY KEY,
-    name TEXT,
-    widthmm NUMERIC(10,2),
-    lengthmm NUMERIC(10,2),
-    dimensionunit VARCHAR(20),
-    weightvalue NUMERIC(10,2),
-    weightunit VARCHAR(20),
-    typecode INT,
-    imagepath TEXT,
-    price NUMERIC(10,2)
-);
-
-CREATE TABLE manufacturedgoods (
-    article VARCHAR(50) PRIMARY KEY,
-    name TEXT,
-    widthmm INT,
-    lengthmm INT,
-    unit VARCHAR(20),
-    price NUMERIC(10,2),
-    imagepath TEXT,
-    comment TEXT
-);
-
-CREATE TABLE fabricstock (
-    rollid TEXT PRIMARY KEY,
-    fabricarticle VARCHAR(50),
-    lengthmm INT,
-    widthmm INT,
-    unit VARCHAR(20)
-);
-
-CREATE TABLE fittingstock (
-    batchid TEXT PRIMARY KEY,
-    fittingarticle VARCHAR(50),
-    quantity INT
-);
-
--- Вставка ролей
-INSERT INTO roles (name) VALUES 
-('Заказчик'),
-('Менеджер'),
-('Кладовщик'),
-('Дирекция');
-
--- Создание тестовых пользователей
-INSERT INTO users (roleid, fullname, login, passwordhash) VALUES
-((SELECT id FROM roles WHERE name = 'Менеджер'), 'Менеджер Тестовый', 'manager', crypt('123456', gen_salt('bf'))),
-((SELECT id FROM roles WHERE name = 'Кладовщик'), 'Кладовщик Тестовый', 'warehouse', crypt('123456', gen_salt('bf'))),
-((SELECT id FROM roles WHERE name = 'Дирекция'), 'Директор Тестовый', 'director', crypt('123456', gen_salt('bf')));
-
--- Функции
+-- Функция для аутентификации пользователя
 CREATE OR REPLACE FUNCTION authenticate_user(p_login TEXT, p_password TEXT)
 RETURNS TABLE(id INT, roleid INT, fullname TEXT, login TEXT, rolename TEXT)
 LANGUAGE plpgsql
@@ -183,6 +53,7 @@ BEGIN
 END;
 $$;
 
+-- Функция для регистрации заказчика
 CREATE OR REPLACE FUNCTION register_customer(p_fullname TEXT, p_login TEXT, p_password TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -206,6 +77,7 @@ EXCEPTION
 END;
 $$;
 
+-- Функция для получения тканей с деталями
 CREATE OR REPLACE FUNCTION get_fabrics_with_details()
 RETURNS TABLE(
     article VARCHAR(50),
@@ -251,6 +123,7 @@ BEGIN
 END;
 $$;
 
+-- Функция для получения фурнитуры с деталями
 CREATE OR REPLACE FUNCTION get_fittings_with_details()
 RETURNS TABLE(
     article VARCHAR(50),
@@ -292,67 +165,6 @@ $$;
             await command.ExecuteNonQueryAsync();
         }
 
-        private async Task ImportCsvDataAsync()
-        {
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            var csvPath = GetCsvPath();
-
-            // Импорт данных из CSV файлов
-            await ImportCsvFileAsync(connection, csvPath, "lookup_fabric_names.csv", "lookupfabricnames", new[] { "id", "name" });
-            await ImportCsvFileAsync(connection, csvPath, "lookup_patterns.csv", "lookuppatterns", new[] { "id", "name" });
-            await ImportCsvFileAsync(connection, csvPath, "fabric.csv", "fabrics", new[] { "article", "namecode", "colorcode", "patterncode", "imagepath", "compositioncode", "widthmm", "lengthmm", "unit", "price" });
-            await ImportCsvFileAsync(connection, csvPath, "fabric_stock.csv", "fabricstock", new[] { "rollid", "fabricarticle", "lengthmm", "widthmm", "unit" });
-            await ImportCsvFileAsync(connection, csvPath, "fitting_stock.csv", "fittingstock", new[] { "batchid", "fittingarticle", "quantity" });
-        }
-
-        private string GetCsvPath()
-        {
-            var assemblyLocation = Assembly.GetExecutingAssembly().Location;
-            var assemblyDirectory = Path.GetDirectoryName(assemblyLocation);
-            return Path.Combine(assemblyDirectory, "Data");
-        }
-
-        private async Task ImportCsvFileAsync(NpgsqlConnection connection, string csvPath, string fileName, string tableName, string[] columns)
-        {
-            var filePath = Path.Combine(csvPath, fileName);
-            if (!File.Exists(filePath))
-            {
-                Console.WriteLine($"Файл {fileName} не найден, пропускаем импорт");
-                return;
-            }
-
-            try
-            {
-                var lines = await File.ReadAllLinesAsync(filePath);
-                if (lines.Length <= 1) return; // Только заголовок или пустой файл
-
-                for (int i = 1; i < lines.Length; i++) // Пропускаем заголовок
-                {
-                    var values = lines[i].Split(',');
-                    if (values.Length >= columns.Length)
-                    {
-                        var placeholders = string.Join(",", Enumerable.Range(1, columns.Length).Select(x => $"${x}"));
-                        var sql = $"INSERT INTO {tableName} ({string.Join(",", columns)}) VALUES ({placeholders}) ON CONFLICT DO NOTHING";
-
-                        using var cmd = new NpgsqlCommand(sql, connection);
-                        for (int j = 0; j < columns.Length; j++)
-                        {
-                            cmd.Parameters.AddWithValue(values[j].Trim());
-                        }
-                        await cmd.ExecuteNonQueryAsync();
-                        cmd.Parameters.Clear();
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка импорта файла {fileName}: {ex.Message}");
-            }
-        }
-
-        // Остальные методы остаются без изменений...
         public async Task<User?> AuthenticateUserAsync(string login, string password)
         {
             try
@@ -512,5 +324,21 @@ $$;
             }
             return goods;
         }
+
+        public async Task<bool> TestConnectionAsync()
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+                return true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка подключения: {ex.Message}");
+                return false;
+            }
+        }
+
     }
 }
