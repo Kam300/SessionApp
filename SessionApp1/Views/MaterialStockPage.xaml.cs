@@ -8,17 +8,35 @@ namespace SessionApp1.Views
 {
     public partial class MaterialStockPage : Page
     {
-        private readonly MaterialAccountingService _materialService;
+        private MaterialAccountingService _materialService;
 
         public MaterialStockPage()
         {
             InitializeComponent();
-            _materialService = new MaterialAccountingService();
+            InitializeServices();
             LoadFabricStock();
+        }
+
+        private void InitializeServices()
+        {
+            try
+            {
+                _materialService = new MaterialAccountingService();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации сервиса: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void MaterialType_Changed(object sender, RoutedEventArgs e)
         {
+            if (_materialService == null)
+            {
+                InitializeServices();
+            }
+
             if (FabricsRadio.IsChecked == true)
             {
                 LoadFabricStock();
@@ -33,9 +51,13 @@ namespace SessionApp1.Views
         {
             try
             {
+                if (_materialService == null)
+                {
+                    InitializeServices();
+                }
+
                 var stocks = await _materialService.GetFabricStockWithUnitsAsync();
 
-                // Настройка колонок для тканей
                 MaterialStockDataGrid.Columns.Clear();
                 MaterialStockDataGrid.Columns.Add(new DataGridTextColumn
                 {
@@ -105,9 +127,13 @@ namespace SessionApp1.Views
         {
             try
             {
+                if (_materialService == null)
+                {
+                    InitializeServices();
+                }
+
                 var stocks = await _materialService.GetFittingStockWithUnitsAsync();
 
-                // Настройка колонок для фурнитуры
                 MaterialStockDataGrid.Columns.Clear();
                 MaterialStockDataGrid.Columns.Add(new DataGridTextColumn
                 {

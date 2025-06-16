@@ -16,7 +16,6 @@ namespace SessionApp1.Services
             _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432";
         }
 
-        // Получение остатков тканей с пересчетом единиц измерения
         public async Task<List<FabricStockInfo>> GetFabricStockWithUnitsAsync()
         {
             var stocks = new List<FabricStockInfo>();
@@ -27,22 +26,18 @@ namespace SessionApp1.Services
 
                 using var command = new NpgsqlCommand(@"
                     SELECT 
-                        fs.roll_id,
-                        fs.fabric_article,
-                        f.name_code,
-                        fn.name as fabric_name,
-                        fs.length_mm,
-                        fs.width_mm,
-                        fs.unit,
-                        f.price,
-                        -- Расчет площади в кв.м
-                        ROUND((fs.length_mm * fs.width_mm / 1000000.0), 2) as area_sqm,
-                        -- Расчет погонных метров
-                        ROUND((fs.length_mm / 1000.0), 2) as length_m,
-                        -- Расчет стоимости
-                        ROUND((f.price * fs.length_mm / 1000.0), 2) as total_cost
+                        COALESCE(fs.roll_id, '') as roll_id,
+                        COALESCE(fs.fabric_article, '') as fabric_article,
+                        COALESCE(fn.name, '') as fabric_name,
+                        COALESCE(fs.length_mm, 0) as length_mm,
+                        COALESCE(fs.width_mm, 0) as width_mm,
+                        COALESCE(fs.unit, 'м') as unit,
+                        COALESCE(f.price, 0) as price,
+                        ROUND((COALESCE(fs.length_mm, 0) * COALESCE(fs.width_mm, 0) / 1000000.0), 2) as area_sqm,
+                        ROUND((COALESCE(fs.length_mm, 0) / 1000.0), 2) as length_m,
+                        ROUND((COALESCE(f.price, 0) * COALESCE(fs.length_mm, 0) / 1000.0), 2) as total_cost
                     FROM fabric_stock fs
-                    JOIN fabrics f ON fs.fabric_article = f.article
+                    LEFT JOIN fabrics f ON fs.fabric_article = f.article
                     LEFT JOIN lookup_fabric_names fn ON f.name_code = fn.id
                     ORDER BY fs.fabric_article", connection);
 
@@ -54,7 +49,7 @@ namespace SessionApp1.Services
                     {
                         RollId = reader.GetString("roll_id"),
                         FabricArticle = reader.GetString("fabric_article"),
-                        FabricName = reader.IsDBNull("fabric_name") ? "" : reader.GetString("fabric_name"),
+                        FabricName = reader.GetString("fabric_name"),
                         LengthMm = reader.GetInt32("length_mm"),
                         WidthMm = reader.GetInt32("width_mm"),
                         Unit = reader.GetString("unit"),
@@ -72,7 +67,6 @@ namespace SessionApp1.Services
             return stocks;
         }
 
-        // Получение остатков фурнитуры с пересчетом единиц измерения
         public async Task<List<FittingStockInfo>> GetFittingStockWithUnitsAsync()
         {
             var stocks = new List<FittingStockInfo>();
@@ -83,19 +77,17 @@ namespace SessionApp1.Services
 
                 using var command = new NpgsqlCommand(@"
                     SELECT 
-                        fs.batch_id,
-                        fs.fitting_article,
-                        f.name,
-                        fs.quantity,
-                        f.price,
-                        f.weight_value,
-                        f.weight_unit,
-                        -- Расчет общего веса
-                        ROUND((fs.quantity * f.weight_value), 2) as total_weight,
-                        -- Расчет стоимости
-                        ROUND((f.price * fs.quantity), 2) as total_cost
+                        COALESCE(fs.batch_id, '') as batch_id,
+                        COALESCE(fs.fitting_article, '') as fitting_article,
+                        COALESCE(f.name, '') as name,
+                        COALESCE(fs.quantity, 0) as quantity,
+                        COALESCE(f.price, 0) as price,
+                        COALESCE(f.weight_value, 0) as weight_value,
+                        COALESCE(f.weight_unit, 'г') as weight_unit,
+                        ROUND((COALESCE(fs.quantity, 0) * COALESCE(f.weight_value, 0)), 2) as total_weight,
+                        ROUND((COALESCE(f.price, 0) * COALESCE(fs.quantity, 0)), 2) as total_cost
                     FROM fitting_stock fs
-                    JOIN fittings f ON fs.fitting_article = f.article
+                    LEFT JOIN fittings f ON fs.fitting_article = f.article
                     ORDER BY fs.fitting_article", connection);
 
                 using var reader = await command.ExecuteReaderAsync();
@@ -123,7 +115,6 @@ namespace SessionApp1.Services
             return stocks;
         }
 
-        // Расчет средней стоимости материала для списания
         public async Task<decimal> CalculateAverageCostAsync(string materialArticle, string materialType)
         {
             try
@@ -133,14 +124,14 @@ namespace SessionApp1.Services
 
                 string query = materialType.ToLower() == "fabric"
                     ? @"SELECT 
-                         SUM(fs.length_mm * f.price / 1000.0) / SUM(fs.length_mm / 1000.0) as avg_cost
+                         COALESCE(SUM(fs.length_mm * f.price / 1000.0) / NULLIF(SUM(fs.length_mm / 1000.0), 0), 0) as avg_cost
                        FROM fabric_stock fs
-                       JOIN fabrics f ON fs.fabric_article = f.article
+                       LEFT JOIN fabrics f ON fs.fabric_article = f.article
                        WHERE fs.fabric_article = @article"
                     : @"SELECT 
-                         SUM(fs.quantity * f.price) / SUM(fs.quantity) as avg_cost
+                         COALESCE(SUM(fs.quantity * f.price) / NULLIF(SUM(fs.quantity), 0), 0) as avg_cost
                        FROM fitting_stock fs
-                       JOIN fittings f ON fs.fitting_article = f.article
+                       LEFT JOIN fittings f ON fs.fitting_article = f.article
                        WHERE fs.fitting_article = @article";
 
                 using var command = new NpgsqlCommand(query, connection);
