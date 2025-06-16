@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
-using System.Windows;
 
 namespace SessionApp1.Services
 {
@@ -14,155 +13,7 @@ namespace SessionApp1.Services
 
         public DatabaseService()
         {
-            _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
-        }
-
-        public async Task InitializeDatabaseAsync()
-        {
-            try
-            {
-                await CreateFunctionsAsync();
-            }
-            catch (Exception ex)
-            {
-                throw new Exception($"Ошибка инициализации базы данных: {ex.Message}", ex);
-            }
-        }
-
-        private async Task CreateFunctionsAsync()
-        {
-            using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync();
-
-            var sql = @"
--- Включение расширения для хеширования паролей
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- Функция для аутентификации пользователя
-CREATE OR REPLACE FUNCTION authenticate_user(p_login TEXT, p_password TEXT)
-RETURNS TABLE(id INT, roleid INT, fullname TEXT, login TEXT, rolename TEXT)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT u.id, u.roleid, u.fullname, u.login, r.name as rolename
-    FROM users u
-    JOIN roles r ON u.roleid = r.id
-    WHERE u.login = p_login 
-    AND u.passwordhash = crypt(p_password, u.passwordhash);
-END;
-$$;
-
--- Функция для регистрации заказчика
-CREATE OR REPLACE FUNCTION register_customer(p_fullname TEXT, p_login TEXT, p_password TEXT)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-AS $$
-DECLARE
-    customer_role_id INT;
-BEGIN
-    IF EXISTS (SELECT 1 FROM users WHERE login = p_login) THEN
-        RETURN FALSE;
-    END IF;
-    
-    SELECT id INTO customer_role_id FROM roles WHERE name = 'Заказчик';
-    
-    INSERT INTO users (roleid, fullname, login, passwordhash)
-    VALUES (customer_role_id, p_fullname, p_login, crypt(p_password, gen_salt('bf')));
-    
-    RETURN TRUE;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-$$;
-
--- Функция для получения тканей с деталями
-CREATE OR REPLACE FUNCTION get_fabrics_with_details()
-RETURNS TABLE(
-    article VARCHAR(50),
-    namecode INT,
-    colorcode INT,
-    patterncode INT,
-    imagepath TEXT,
-    compositioncode INT,
-    widthmm INT,
-    lengthmm INT,
-    unit VARCHAR(20),
-    price NUMERIC(10,2),
-    fabricname TEXT,
-    colorname TEXT,
-    patternname TEXT,
-    compositionname TEXT
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        f.article,
-        f.namecode,
-        f.colorcode,
-        f.patterncode,
-        f.imagepath,
-        f.compositioncode,
-        f.widthmm,
-        f.lengthmm,
-        f.unit,
-        f.price,
-        COALESCE(fn.name, '') as fabricname,
-        COALESCE(c.name, '') as colorname,
-        COALESCE(p.name, '') as patternname,
-        COALESCE(comp.name, '') as compositionname
-    FROM fabrics f
-    LEFT JOIN lookupfabricnames fn ON f.namecode = fn.id
-    LEFT JOIN lookupcolors c ON f.colorcode = c.id
-    LEFT JOIN lookuppatterns p ON f.patterncode = p.id
-    LEFT JOIN lookupcompositions comp ON f.compositioncode = comp.id
-    ORDER BY f.article;
-END;
-$$;
-
--- Функция для получения фурнитуры с деталями
-CREATE OR REPLACE FUNCTION get_fittings_with_details()
-RETURNS TABLE(
-    article VARCHAR(50),
-    name TEXT,
-    widthmm NUMERIC(10,2),
-    lengthmm NUMERIC(10,2),
-    dimensionunit VARCHAR(20),
-    weightvalue NUMERIC(10,2),
-    weightunit VARCHAR(20),
-    typecode INT,
-    imagepath TEXT,
-    price NUMERIC(10,2),
-    typename TEXT
-)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        f.article,
-        f.name,
-        f.widthmm,
-        f.lengthmm,
-        f.dimensionunit,
-        f.weightvalue,
-        f.weightunit,
-        f.typecode,
-        f.imagepath,
-        f.price,
-        COALESCE(ft.name, '') as typename
-    FROM fittings f
-    LEFT JOIN lookupfittingtypes ft ON f.typecode = ft.id
-    ORDER BY f.article;
-END;
-$$;
-";
-
-            using var command = new NpgsqlCommand(sql, connection);
-            await command.ExecuteNonQueryAsync();
+            _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432";
         }
 
         public async Task<User?> AuthenticateUserAsync(string login, string password)
@@ -172,7 +23,14 @@ $$;
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand("SELECT * FROM authenticate_user(@login, @password)", connection);
+                // Простой запрос без функций
+                using var command = new NpgsqlCommand(@"
+                    SELECT u.id, u.roleid, u.fullname, u.login, r.name as rolename
+                    FROM users u
+                    JOIN roles r ON u.roleid = r.id
+                    WHERE u.login = @login 
+                    AND u.passwordhash = crypt(@password, u.passwordhash)", connection);
+
                 command.Parameters.AddWithValue("login", login);
                 command.Parameters.AddWithValue("password", password);
 
@@ -203,13 +61,33 @@ $$;
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand("SELECT register_customer(@fullname, @login, @password)", connection);
-                command.Parameters.AddWithValue("fullname", fullName);
-                command.Parameters.AddWithValue("login", login);
-                command.Parameters.AddWithValue("password", password);
+                // Проверяем существование пользователя
+                using var checkCommand = new NpgsqlCommand("SELECT COUNT(*) FROM users WHERE login = @login", connection);
+                checkCommand.Parameters.AddWithValue("login", login);
+                var userExists = (long)await checkCommand.ExecuteScalarAsync() > 0;
 
-                var result = await command.ExecuteScalarAsync();
-                return (bool)result!;
+                if (userExists)
+                    return false;
+
+                // Получаем ID роли заказчика
+                using var roleCommand = new NpgsqlCommand("SELECT id FROM roles WHERE name = 'Заказчик'", connection);
+                var customerRoleId = await roleCommand.ExecuteScalarAsync();
+
+                if (customerRoleId == null)
+                    return false;
+
+                // Создаем пользователя
+                using var insertCommand = new NpgsqlCommand(@"
+                    INSERT INTO users (roleid, fullname, login, passwordhash)
+                    VALUES (@roleid, @fullname, @login, crypt(@password, gen_salt('bf')))", connection);
+
+                insertCommand.Parameters.AddWithValue("roleid", customerRoleId);
+                insertCommand.Parameters.AddWithValue("fullname", fullName);
+                insertCommand.Parameters.AddWithValue("login", login);
+                insertCommand.Parameters.AddWithValue("password", password);
+
+                await insertCommand.ExecuteNonQueryAsync();
+                return true;
             }
             catch (Exception ex)
             {
@@ -225,7 +103,29 @@ $$;
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand("SELECT * FROM get_fabrics_with_details()", connection);
+                using var command = new NpgsqlCommand(@"
+                    SELECT 
+                        f.article,
+                        f.namecode,
+                        f.colorcode,
+                        f.patterncode,
+                        f.imagepath,
+                        f.compositioncode,
+                        f.widthmm,
+                        f.lengthmm,
+                        f.unit,
+                        f.price,
+                        COALESCE(fn.name, '') as fabricname,
+                        COALESCE(c.name, '') as colorname,
+                        COALESCE(p.name, '') as patternname,
+                        COALESCE(comp.name, '') as compositionname
+                    FROM fabrics f
+                    LEFT JOIN lookupfabricnames fn ON f.namecode = fn.id
+                    LEFT JOIN lookupcolors c ON f.colorcode = c.id
+                    LEFT JOIN lookuppatterns p ON f.patterncode = p.id
+                    LEFT JOIN lookupcompositions comp ON f.compositioncode = comp.id
+                    ORDER BY f.article", connection);
+
                 using var reader = await command.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
@@ -264,7 +164,23 @@ $$;
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand("SELECT * FROM get_fittings_with_details()", connection);
+                using var command = new NpgsqlCommand(@"
+                    SELECT 
+                        f.article,
+                        f.name,
+                        f.widthmm,
+                        f.lengthmm,
+                        f.dimensionunit,
+                        f.weightvalue,
+                        f.weightunit,
+                        f.typecode,
+                        f.imagepath,
+                        f.price,
+                        COALESCE(ft.name, '') as typename
+                    FROM fittings f
+                    LEFT JOIN lookupfittingtypes ft ON f.typecode = ft.id
+                    ORDER BY f.article", connection);
+
                 using var reader = await command.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
@@ -324,21 +240,5 @@ $$;
             }
             return goods;
         }
-
-        public async Task<bool> TestConnectionAsync()
-        {
-            try
-            {
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
-                return true;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Ошибка подключения: {ex.Message}");
-                return false;
-            }
-        }
-
     }
 }

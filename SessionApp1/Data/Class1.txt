@@ -1,0 +1,15 @@
+﻿
+-- Вставка ролей
+INSERT INTO roles (name) VALUES 
+('Заказчик'),
+('Менеджер'),
+('Кладовщик'),
+('Дирекция')
+ON CONFLICT (name) DO NOTHING;
+
+-- Создание тестовых пользователей
+INSERT INTO users (roleid, fullname, login, passwordhash) VALUES
+((SELECT id FROM roles WHERE name = 'Менеджер'), 'Менеджер Тестовый', 'manager', crypt('123456', gen_salt('bf'))),
+((SELECT id FROM roles WHERE name = 'Кладовщик'), 'Кладовщик Тестовый', 'warehouse', crypt('123456', gen_salt('bf'))),
+((SELECT id FROM roles WHERE name = 'Дирекция'), 'Директор Тестовый', 'director', crypt('123456', gen_salt('bf')))
+ON CONFLICT (login) DO NOTHING;
