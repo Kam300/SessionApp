@@ -8,6 +8,7 @@ namespace SessionApp1
         public MainWindow()
         {
             InitializeComponent();
+            // Сразу загружаем страницу авторизации
             MainFrame.Navigate(new LoginPage());
         }
 

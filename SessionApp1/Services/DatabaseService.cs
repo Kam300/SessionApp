@@ -24,10 +24,7 @@ namespace SessionApp1.Services
         {
             try
             {
-                // Создаем базу данных если не существует
                 await CreateDatabaseIfNotExistsAsync();
-
-                // Создаем структуру и импортируем данные
                 await CreateTablesAndFunctionsAsync();
                 await ImportCsvDataAsync();
             }
@@ -61,13 +58,18 @@ namespace SessionApp1.Services
 -- Включение расширения для хеширования паролей
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
+-- Удаление существующих таблиц
+DROP TABLE IF EXISTS orderitems, orders, users, roles, specificationsfabric, specificationsfitting, 
+fabricstock, fittingstock, fabrics, manufacturedgoods, fittings, lookupfabricnames, lookupcolors, 
+lookuppatterns, lookupcompositions, lookupfittingtypes CASCADE;
+
 -- Создание таблиц
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE roles (
     id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     roleid INT NOT NULL REFERENCES roles(id),
     fullname TEXT NOT NULL,
@@ -76,33 +78,33 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Справочные таблицы
-CREATE TABLE IF NOT EXISTS lookupfabricnames (
+CREATE TABLE lookupfabricnames (
     id INT PRIMARY KEY,
     name TEXT
 );
 
-CREATE TABLE IF NOT EXISTS lookupcolors (
+CREATE TABLE lookupcolors (
     id INT PRIMARY KEY,
     name TEXT
 );
 
-CREATE TABLE IF NOT EXISTS lookuppatterns (
+CREATE TABLE lookuppatterns (
     id INT PRIMARY KEY,
     name TEXT
 );
 
-CREATE TABLE IF NOT EXISTS lookupcompositions (
+CREATE TABLE lookupcompositions (
     id INT PRIMARY KEY,
     name TEXT
 );
 
-CREATE TABLE IF NOT EXISTS lookupfittingtypes (
+CREATE TABLE lookupfittingtypes (
     id INT PRIMARY KEY,
     name TEXT
 );
 
 -- Основные таблицы
-CREATE TABLE IF NOT EXISTS fabrics (
+CREATE TABLE fabrics (
     article VARCHAR(50) PRIMARY KEY,
     namecode INT,
     colorcode INT,
@@ -115,7 +117,7 @@ CREATE TABLE IF NOT EXISTS fabrics (
     price NUMERIC(10,2)
 );
 
-CREATE TABLE IF NOT EXISTS fittings (
+CREATE TABLE fittings (
     article VARCHAR(50) PRIMARY KEY,
     name TEXT,
     widthmm NUMERIC(10,2),
@@ -128,7 +130,7 @@ CREATE TABLE IF NOT EXISTS fittings (
     price NUMERIC(10,2)
 );
 
-CREATE TABLE IF NOT EXISTS manufacturedgoods (
+CREATE TABLE manufacturedgoods (
     article VARCHAR(50) PRIMARY KEY,
     name TEXT,
     widthmm INT,
@@ -139,7 +141,7 @@ CREATE TABLE IF NOT EXISTS manufacturedgoods (
     comment TEXT
 );
 
-CREATE TABLE IF NOT EXISTS fabricstock (
+CREATE TABLE fabricstock (
     rollid TEXT PRIMARY KEY,
     fabricarticle VARCHAR(50),
     lengthmm INT,
@@ -147,7 +149,7 @@ CREATE TABLE IF NOT EXISTS fabricstock (
     unit VARCHAR(20)
 );
 
-CREATE TABLE IF NOT EXISTS fittingstock (
+CREATE TABLE fittingstock (
     batchid TEXT PRIMARY KEY,
     fittingarticle VARCHAR(50),
     quantity INT
@@ -158,17 +160,15 @@ INSERT INTO roles (name) VALUES
 ('Заказчик'),
 ('Менеджер'),
 ('Кладовщик'),
-('Дирекция')
-ON CONFLICT (name) DO NOTHING;
+('Дирекция');
 
 -- Создание тестовых пользователей
 INSERT INTO users (roleid, fullname, login, passwordhash) VALUES
 ((SELECT id FROM roles WHERE name = 'Менеджер'), 'Менеджер Тестовый', 'manager', crypt('123456', gen_salt('bf'))),
 ((SELECT id FROM roles WHERE name = 'Кладовщик'), 'Кладовщик Тестовый', 'warehouse', crypt('123456', gen_salt('bf'))),
-((SELECT id FROM roles WHERE name = 'Дирекция'), 'Директор Тестовый', 'director', crypt('123456', gen_salt('bf')))
-ON CONFLICT (login) DO NOTHING;
+((SELECT id FROM roles WHERE name = 'Дирекция'), 'Директор Тестовый', 'director', crypt('123456', gen_salt('bf')));
 
--- Функция для аутентификации пользователя
+-- Функции
 CREATE OR REPLACE FUNCTION authenticate_user(p_login TEXT, p_password TEXT)
 RETURNS TABLE(id INT, roleid INT, fullname TEXT, login TEXT, rolename TEXT)
 LANGUAGE plpgsql
@@ -183,7 +183,6 @@ BEGIN
 END;
 $$;
 
--- Функция для регистрации заказчика
 CREATE OR REPLACE FUNCTION register_customer(p_fullname TEXT, p_login TEXT, p_password TEXT)
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -207,7 +206,6 @@ EXCEPTION
 END;
 $$;
 
--- Функция для получения тканей с деталями
 CREATE OR REPLACE FUNCTION get_fabrics_with_details()
 RETURNS TABLE(
     article VARCHAR(50),
@@ -253,7 +251,6 @@ BEGIN
 END;
 $$;
 
--- Функция для получения фурнитуры с деталями
 CREATE OR REPLACE FUNCTION get_fittings_with_details()
 RETURNS TABLE(
     article VARCHAR(50),
@@ -302,23 +299,12 @@ $$;
 
             var csvPath = GetCsvPath();
 
-            // Очищаем таблицы перед импортом
-            await ExecuteNonQueryAsync(connection, "TRUNCATE TABLE lookupfabricnames, lookupcolors, lookuppatterns, lookupcompositions, lookupfittingtypes CASCADE");
-            await ExecuteNonQueryAsync(connection, "TRUNCATE TABLE fabrics, fittings, manufacturedgoods, fabricstock, fittingstock CASCADE");
-
-            // Импорт справочников
-            await ImportCsvFileAsync(connection, csvPath, "lookup_fabric_names.csv", "lookupfabricnames", "id,name");
-            await ImportCsvFileAsync(connection, csvPath, "lookup_colors.csv", "lookupcolors", "id,name");
-            await ImportCsvFileAsync(connection, csvPath, "lookup_patterns.csv", "lookuppatterns", "id,name");
-            await ImportCsvFileAsync(connection, csvPath, "lookup_compositions.csv", "lookupcompositions", "id,name");
-            await ImportCsvFileAsync(connection, csvPath, "lookup_fitting_types.csv", "lookupfittingtypes", "id,name");
-
-            // Импорт основных данных
-            await ImportCsvFileAsync(connection, csvPath, "fabric.csv", "fabrics", "article,namecode,colorcode,patterncode,imagepath,compositioncode,widthmm,lengthmm,unit,price");
-            await ImportCsvFileAsync(connection, csvPath, "fittings.csv", "fittings", "article,name,widthmm,lengthmm,dimensionunit,weightvalue,weightunit,typecode,imagepath,price");
-            await ImportCsvFileAsync(connection, csvPath, "manufactured_goods.csv", "manufacturedgoods", "article,name,widthmm,lengthmm,unit,price,imagepath,comment");
-            await ImportCsvFileAsync(connection, csvPath, "fabric_stock.csv", "fabricstock", "rollid,fabricarticle,lengthmm,widthmm,unit");
-            await ImportCsvFileAsync(connection, csvPath, "fitting_stock.csv", "fittingstock", "batchid,fittingarticle,quantity");
+            // Импорт данных из CSV файлов
+            await ImportCsvFileAsync(connection, csvPath, "lookup_fabric_names.csv", "lookupfabricnames", new[] { "id", "name" });
+            await ImportCsvFileAsync(connection, csvPath, "lookup_patterns.csv", "lookuppatterns", new[] { "id", "name" });
+            await ImportCsvFileAsync(connection, csvPath, "fabric.csv", "fabrics", new[] { "article", "namecode", "colorcode", "patterncode", "imagepath", "compositioncode", "widthmm", "lengthmm", "unit", "price" });
+            await ImportCsvFileAsync(connection, csvPath, "fabric_stock.csv", "fabricstock", new[] { "rollid", "fabricarticle", "lengthmm", "widthmm", "unit" });
+            await ImportCsvFileAsync(connection, csvPath, "fitting_stock.csv", "fittingstock", new[] { "batchid", "fittingarticle", "quantity" });
         }
 
         private string GetCsvPath()
@@ -328,7 +314,7 @@ $$;
             return Path.Combine(assemblyDirectory, "Data");
         }
 
-        private async Task ImportCsvFileAsync(NpgsqlConnection connection, string csvPath, string fileName, string tableName, string columns)
+        private async Task ImportCsvFileAsync(NpgsqlConnection connection, string csvPath, string fileName, string tableName, string[] columns)
         {
             var filePath = Path.Combine(csvPath, fileName);
             if (!File.Exists(filePath))
@@ -339,13 +325,26 @@ $$;
 
             try
             {
-                var copyCommand = $"COPY {tableName}({columns}) FROM STDIN WITH CSV HEADER DELIMITER ';'";
+                var lines = await File.ReadAllLinesAsync(filePath);
+                if (lines.Length <= 1) return; // Только заголовок или пустой файл
 
-                using var writer = connection.BeginTextImport(copyCommand);
-                using var reader = new StreamReader(filePath);
+                for (int i = 1; i < lines.Length; i++) // Пропускаем заголовок
+                {
+                    var values = lines[i].Split(',');
+                    if (values.Length >= columns.Length)
+                    {
+                        var placeholders = string.Join(",", Enumerable.Range(1, columns.Length).Select(x => $"${x}"));
+                        var sql = $"INSERT INTO {tableName} ({string.Join(",", columns)}) VALUES ({placeholders}) ON CONFLICT DO NOTHING";
 
-                var content = await reader.ReadToEndAsync();
-                await writer.WriteAsync(content);
+                        using var cmd = new NpgsqlCommand(sql, connection);
+                        for (int j = 0; j < columns.Length; j++)
+                        {
+                            cmd.Parameters.AddWithValue(values[j].Trim());
+                        }
+                        await cmd.ExecuteNonQueryAsync();
+                        cmd.Parameters.Clear();
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -353,19 +352,7 @@ $$;
             }
         }
 
-        private async Task ExecuteNonQueryAsync(NpgsqlConnection connection, string sql)
-        {
-            try
-            {
-                using var command = new NpgsqlCommand(sql, connection);
-                await command.ExecuteNonQueryAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Ошибка выполнения SQL: {ex.Message}");
-            }
-        }
-
+        // Остальные методы остаются без изменений...
         public async Task<User?> AuthenticateUserAsync(string login, string password)
         {
             try
