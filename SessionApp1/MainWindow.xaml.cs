@@ -7,10 +7,18 @@ namespace SessionApp1
     {
         public MainWindow()
         {
-            InitializeComponent();
-            // Сразу загружаем страницу авторизации
-            MainFrame.Navigate(new LoginPage());
+            try
+            {
+                InitializeComponent();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка инициализации: {ex}");
+                throw; // Перебрасываем исключение для остановки отладчика
+            }
         }
+
+
 
         public void NavigateToPage(object page)
         {

@@ -1,54 +1,42 @@
-﻿using SessionApp1.Services;
-using System;
-using System.Windows;
+﻿using System.Windows;
+using System.Windows.Threading;
 
-namespace SessionApp1
+public partial class App : Application
 {
-    public partial class App : Application
+
+    protected override void OnStartup(StartupEventArgs e)
     {
-        protected override async void OnStartup(StartupEventArgs e)
+        this.DispatcherUnhandledException += (sender, args) =>
         {
-            base.OnStartup(e);
+            MessageBox.Show($"Ошибка: {args.Exception.ToString()}");
+            args.Handled = true;
+        };
 
-            // Показываем окно загрузки
-            var loadingWindow = new Window
-            {
-                Title = "Инициализация базы данных...",
-                Width = 400,
-                Height = 200,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                ResizeMode = ResizeMode.NoResize,
-                Content = new System.Windows.Controls.TextBlock
-                {
-                    Text = "Подождите, идет инициализация базы данных...",
-                    HorizontalAlignment = HorizontalAlignment.Center,
-                    VerticalAlignment = VerticalAlignment.Center,
-                    FontSize = 16
-                }
-            };
-            loadingWindow.Show();
+        AppDomain.CurrentDomain.UnhandledException += (sender, args) =>
+        {
+            MessageBox.Show($"Критическая ошибка: {args.ExceptionObject.ToString()}");
+        };
 
-            try
-            {
-                var databaseService = new DatabaseService();
-                await databaseService.InitializeDatabaseAsync();
+        base.OnStartup(e);
+    }
 
-                // Закрываем окно загрузки
-                loadingWindow.Close();
-
-                // Создаем и показываем главное окно
-                var mainWindow = new MainWindow();
-                MainWindow = mainWindow;
-                mainWindow.Show();
-            }
-            catch (Exception ex)
-            {
-                loadingWindow.Close();
-                MessageBox.Show($"Ошибка инициализации базы данных: {ex.Message}",
-                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-                Shutdown();
-            }
+    private void App_DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            MessageBox.Show($"Ошибка приложения: {e.Exception.ToString()}");
+            e.Handled = true; // Предотвращает закрытие приложения
         }
 
-    }
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            MessageBox.Show($"Критическая ошибка: {e.ExceptionObject.ToString()}");
+        }
+
+        private void TaskScheduler_UnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            MessageBox.Show($"Ошибка в задаче: {e.Exception.ToString()}");
+            e.SetObserved();
+        }
 }
+
+
+    
