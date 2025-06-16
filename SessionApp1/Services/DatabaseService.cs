@@ -13,7 +13,7 @@ namespace SessionApp1.Services
 
         public DatabaseService()
         {
-            _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432";
+            _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
         }
 
         public async Task<User?> AuthenticateUserAsync(string login, string password)
@@ -106,13 +106,13 @@ namespace SessionApp1.Services
                 using var command = new NpgsqlCommand(@"
                     SELECT 
                         f.article,
-                        f.namecode,
-                        f.colorcode,
-                        f.patterncode,
-                        f.imagepath,
-                        f.compositioncode,
-                        f.widthmm,
-                        f.lengthmm,
+                        f.name_code,
+                        f.color_code,
+                        f.pattern_code,
+                        f.image_path,
+                        f.composition_code,
+                        f.width_mm,
+                        f.length_mm,
                         f.unit,
                         f.price,
                         COALESCE(fn.name, '') as fabricname,
@@ -120,10 +120,10 @@ namespace SessionApp1.Services
                         COALESCE(p.name, '') as patternname,
                         COALESCE(comp.name, '') as compositionname
                     FROM fabrics f
-                    LEFT JOIN lookupfabricnames fn ON f.namecode = fn.id
-                    LEFT JOIN lookupcolors c ON f.colorcode = c.id
-                    LEFT JOIN lookuppatterns p ON f.patterncode = p.id
-                    LEFT JOIN lookupcompositions comp ON f.compositioncode = comp.id
+                    LEFT JOIN lookup_fabric_names fn ON f.name_code = fn.id
+                    LEFT JOIN lookup_colors c ON f.color_code = c.id
+                    LEFT JOIN lookup_patterns p ON f.pattern_code = p.id
+                    LEFT JOIN lookup_compositions comp ON f.composition_code = comp.id
                     ORDER BY f.article", connection);
 
                 using var reader = await command.ExecuteReaderAsync();
@@ -133,13 +133,13 @@ namespace SessionApp1.Services
                     fabrics.Add(new Fabric
                     {
                         Article = reader.GetString("article"),
-                        NameCode = reader.GetInt32("namecode"),
-                        ColorCode = reader.GetInt32("colorcode"),
-                        PatternCode = reader.GetInt32("patterncode"),
-                        ImagePath = reader.GetString("imagepath"),
-                        CompositionCode = reader.GetInt32("compositioncode"),
-                        WidthMm = reader.GetInt32("widthmm"),
-                        LengthMm = reader.GetInt32("lengthmm"),
+                        NameCode = reader.GetInt32("name_code"),
+                        ColorCode = reader.GetInt32("color_code"),
+                        PatternCode = reader.GetInt32("pattern_code"),
+                        ImagePath = reader.GetString("image_path"),
+                        CompositionCode = reader.GetInt32("composition_code"),
+                        WidthMm = reader.GetInt32("width_mm"),
+                        LengthMm = reader.GetInt32("length_mm"),
                         Unit = reader.GetString("unit"),
                         Price = reader.GetDecimal("price"),
                         FabricName = reader.IsDBNull("fabricname") ? "" : reader.GetString("fabricname"),
@@ -165,21 +165,21 @@ namespace SessionApp1.Services
                 await connection.OpenAsync();
 
                 using var command = new NpgsqlCommand(@"
-                    SELECT 
-                        f.article,
-                        f.name,
-                        f.widthmm,
-                        f.lengthmm,
-                        f.dimensionunit,
-                        f.weightvalue,
-                        f.weightunit,
-                        f.typecode,
-                        f.imagepath,
-                        f.price,
-                        COALESCE(ft.name, '') as typename
-                    FROM fittings f
-                    LEFT JOIN lookupfittingtypes ft ON f.typecode = ft.id
-                    ORDER BY f.article", connection);
+            SELECT 
+                f.article,
+                f.name,
+                f.width_mm,
+                f.length_mm,
+                COALESCE(f.dimension_unit, '') as dimension_unit,
+                f.weight_value,
+                COALESCE(f.weight_unit, '') as weight_unit,
+                f.type_code,
+                f.image_path,
+                f.price,
+                COALESCE(ft.name, '') as typename
+            FROM fittings f
+            LEFT JOIN lookup_fitting_types ft ON f.type_code = ft.id
+            ORDER BY f.article", connection);
 
                 using var reader = await command.ExecuteReaderAsync();
 
@@ -189,15 +189,15 @@ namespace SessionApp1.Services
                     {
                         Article = reader.GetString("article"),
                         Name = reader.GetString("name"),
-                        WidthMm = reader.GetDecimal("widthmm"),
-                        LengthMm = reader.GetDecimal("lengthmm"),
-                        DimensionUnit = reader.GetString("dimensionunit"),
-                        WeightValue = reader.GetDecimal("weightvalue"),
-                        WeightUnit = reader.GetString("weightunit"),
-                        TypeCode = reader.GetInt32("typecode"),
-                        ImagePath = reader.GetString("imagepath"),
+                        WidthMm = reader.GetDecimal("width_mm"),
+                        LengthMm = reader.GetDecimal("length_mm"),
+                        DimensionUnit = reader.GetString("dimension_unit"), // Теперь всегда строка
+                        WeightValue = reader.GetDecimal("weight_value"),
+                        WeightUnit = reader.GetString("weight_unit"), // Теперь всегда строка
+                        TypeCode = reader.GetInt32("type_code"),
+                        ImagePath = reader.GetString("image_path"),
                         Price = reader.GetDecimal("price"),
-                        TypeName = reader.IsDBNull("typename") ? "" : reader.GetString("typename")
+                        TypeName = reader.GetString("typename")
                     });
                 }
             }
@@ -216,7 +216,20 @@ namespace SessionApp1.Services
                 using var connection = new NpgsqlConnection(_connectionString);
                 await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand("SELECT * FROM manufacturedgoods ORDER BY article", connection);
+                // Используем COALESCE для обработки NULL значений
+                using var command = new NpgsqlCommand(@"
+            SELECT 
+                article,
+                name,
+                width_mm,
+                length_mm,
+                unit,
+                price,
+                image_path,
+                COALESCE(comment, '') as comment
+            FROM manufactured_goods 
+            ORDER BY article", connection);
+
                 using var reader = await command.ExecuteReaderAsync();
 
                 while (await reader.ReadAsync())
@@ -225,12 +238,12 @@ namespace SessionApp1.Services
                     {
                         Article = reader.GetString("article"),
                         Name = reader.GetString("name"),
-                        WidthMm = reader.GetInt32("widthmm"),
-                        LengthMm = reader.GetInt32("lengthmm"),
+                        WidthMm = reader.GetInt32("width_mm"),
+                        LengthMm = reader.GetInt32("length_mm"),
                         Unit = reader.GetString("unit"),
                         Price = reader.GetDecimal("price"),
-                        ImagePath = reader.GetString("imagepath"),
-                        Comment = reader.GetString("comment")
+                        ImagePath = reader.GetString("image_path"),
+                        Comment = reader.GetString("comment") // Теперь всегда будет строка, не NULL
                     });
                 }
             }

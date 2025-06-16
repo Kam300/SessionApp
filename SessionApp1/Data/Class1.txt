@@ -1,4 +1,153 @@
-﻿
+﻿-- PostgreSQL Script
+-- Version: Final, Corrected based on your detailed feedback.
+-- This script accurately mirrors all sheets from nomenklatura-kopiia2.xlsx and includes application-critical tables.
+
+-- === 1. УДАЛЕНИЕ СТАРЫХ ТАБЛИЦ ===
+DROP TABLE IF EXISTS
+    order_items,
+    orders,
+    users,
+    roles,
+    specifications_fabric,
+    specifications_fitting,
+    fabric_stock,
+    fitting_stock,
+    fabrics,
+    manufactured_goods,
+    fittings,
+    lookup_fabric_names,
+    lookup_colors,
+    lookup_patterns,
+    lookup_compositions,
+    lookup_fitting_types CASCADE;
+
+
+-- === 2. ТАБЛИЦЫ ДЛЯ УПРАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯМИ И РОЛЯМИ ===
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL
+);
+
+
+-- === 3. ТАБЛИЦЫ ДЛЯ ЗАКАЗОВ ===
+CREATE TABLE orders (
+    id SERIAL PRIMARY KEY,
+    order_number INT,
+    stage TEXT,
+    order_date DATE,
+    customer TEXT,
+    manager TEXT,
+    total_amount NUMERIC(12, 2)
+);
+
+CREATE TABLE order_items (
+    id SERIAL PRIMARY KEY,
+    order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    item_article VARCHAR(50) NOT NULL,
+    quantity INT NOT NULL CHECK (quantity > 0)
+);
+
+
+-- === 4. СПРАВОЧНЫЕ ТАБЛИЦЫ (ДЛЯ ЛИСТОВ "Ткани", "Цвет" и т.д.) ===
+CREATE TABLE lookup_fabric_names ( id INT PRIMARY KEY, name TEXT );
+CREATE TABLE lookup_colors ( id INT PRIMARY KEY, name TEXT );
+CREATE TABLE lookup_patterns ( id INT PRIMARY KEY, name TEXT );
+CREATE TABLE lookup_compositions ( id INT PRIMARY KEY, name TEXT );
+CREATE TABLE lookup_fitting_types ( id INT PRIMARY KEY, name TEXT );
+
+
+-- === 5. ОСНОВНЫЕ ТАБЛИЦЫ ДАННЫХ (Структура как в Excel) ===
+-- Таблица для листа "ГотоваяТкани"
+CREATE TABLE fabrics (
+    article VARCHAR(50),
+    name_code INT,
+    color_code INT,
+    pattern_code INT,
+    image_path TEXT,
+    composition_code INT,
+    width_mm INT,
+    length_mm INT,
+    unit VARCHAR(20),
+    price NUMERIC(10, 2)
+);
+
+-- Таблица для листа "ГотоваяИзделия1"
+CREATE TABLE manufactured_goods (
+    article VARCHAR(50),
+    name TEXT,
+    width_mm INT,
+    length_mm INT,
+    unit VARCHAR(20),
+    price NUMERIC(10, 2),
+    image_path TEXT,
+    comment TEXT
+);
+
+-- Таблица для листа "ГотоваяФурнитура1"
+CREATE TABLE fittings (
+    article VARCHAR(50),
+    name TEXT,
+    width_mm NUMERIC(10, 2),
+    length_mm NUMERIC(10, 2),
+    dimension_unit VARCHAR(20),
+    weight_value NUMERIC(10, 2),
+    weight_unit VARCHAR(20),
+    type_code INT,
+    image_path TEXT,
+    price NUMERIC(10, 2)
+);
+
+
+-- === 6. ТАБЛИЦЫ СКЛАДСКИХ ОСТАТКОВ (ИСПРАВЛЕННАЯ СТРУКТУРА) ===
+
+-- Таблица для листа "Склад ткани"
+CREATE TABLE fabric_stock (
+    roll_id TEXT, -- Поле "Рулон"
+    fabric_article VARCHAR(50),
+    length_mm INT,
+    width_mm INT,
+    unit VARCHAR(20)
+);
+
+-- Таблица для листа "Склад фурнитуры"
+CREATE TABLE fitting_stock (
+    batch_id TEXT, -- Поле "Партия"
+    fitting_article VARCHAR(50),
+    quantity INT
+);
+
+
+-- === 7. ТАБЛИЦЫ-СВЯЗКИ ДЛЯ СПЕЦИФИКАЦИЙ (ИСПРАВЛЕННАЯ СТРУКТУРА) ===
+
+-- Таблица для листа "ТканиИзделия"
+CREATE TABLE specifications_fabric (
+    fabric_article VARCHAR(50),
+    manufactured_good_article VARCHAR(50),
+    PRIMARY KEY (fabric_article, manufactured_good_article) -- Составной ключ, как вы просили
+);
+
+-- Таблица для листа "ФурнитураИзделия"
+CREATE TABLE specifications_fitting (
+    id SERIAL PRIMARY KEY, -- Уникальный ID для каждой строки
+    fitting_article VARCHAR(50),
+    manufactured_good_article VARCHAR(50),
+    placement TEXT,
+    width NUMERIC(10, 2),
+    length NUMERIC(10, 2),
+    rotation_angle INT,
+    quantity INT
+);
+
+
+
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    roleid INT NOT NULL REFERENCES roles(id),
+    fullname TEXT NOT NULL,
+    login TEXT UNIQUE NOT NULL,
+    passwordhash TEXT NOT NULL
+);
+
 -- Вставка ролей
 INSERT INTO roles (name) VALUES 
 ('Заказчик'),
@@ -13,3 +162,20 @@ INSERT INTO users (roleid, fullname, login, passwordhash) VALUES
 ((SELECT id FROM roles WHERE name = 'Кладовщик'), 'Кладовщик Тестовый', 'warehouse', crypt('123456', gen_salt('bf'))),
 ((SELECT id FROM roles WHERE name = 'Дирекция'), 'Директор Тестовый', 'director', crypt('123456', gen_salt('bf')))
 ON CONFLICT (login) DO NOTHING;
+-- Обновляем структуру таблицы manufactured_goods
+ALTER TABLE manufactured_goods ALTER COLUMN comment SET DEFAULT '';
+
+-- Обновляем существующие NULL значения
+UPDATE manufactured_goods SET comment = '' WHERE comment IS NULL;
+
+-- Делаем поле comment NOT NULL (опционально)
+-- ALTER TABLE manufactured_goods ALTER COLUMN comment SET NOT NULL;
+-- Обновляем NULL значения в таблице fittings
+UPDATE fittings SET dimension_unit = 'мм' WHERE dimension_unit IS NULL;
+UPDATE fittings SET weight_unit = 'г' WHERE weight_unit IS NULL;
+
+-- Устанавливаем значения по умолчанию для будущих записей
+ALTER TABLE fittings ALTER COLUMN dimension_unit SET DEFAULT 'мм';
+ALTER TABLE fittings ALTER COLUMN weight_unit SET DEFAULT 'г';
+
+
