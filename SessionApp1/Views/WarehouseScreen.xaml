@@ -39,11 +39,12 @@
                         FontSize="16" Padding="20,10" Margin="0,0,10,0"
                         Background="#FFD1FCFC" Foreground="Black"
                         Click="MaterialStockButton_Click"/>
-                <Button x:Name="MaterialReceiptButton" Content="Поступление" 
+                <Button x:Name="MaterialReceiptButton" Content="Создать поступление" 
                         FontSize="16" Padding="20,10"
                         Background="#FFD1FCFC" Foreground="Black"
-                        Click="MaterialReceiptButton_Click"/>
-            </StackPanel>
+                        Click="CreateReceipt_Click"/>
+                </StackPanel>
+            
         </Border>
 
 

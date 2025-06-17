@@ -46,6 +46,7 @@ namespace SessionApp1.Services
                         RoleName = reader.GetString("rolename")
                     };
                 }
+
                 return null;
             }
             catch (Exception ex)
@@ -62,7 +63,8 @@ namespace SessionApp1.Services
                 await connection.OpenAsync();
 
                 // Проверяем существование пользователя
-                using var checkCommand = new NpgsqlCommand("SELECT COUNT(*) FROM users WHERE login = @login", connection);
+                using var checkCommand =
+                    new NpgsqlCommand("SELECT COUNT(*) FROM users WHERE login = @login", connection);
                 checkCommand.Parameters.AddWithValue("login", login);
                 var userExists = (long)await checkCommand.ExecuteScalarAsync() > 0;
 
@@ -153,6 +155,7 @@ namespace SessionApp1.Services
             {
                 throw new Exception($"Ошибка загрузки тканей: {ex.Message}", ex);
             }
+
             return fabrics;
         }
 
@@ -205,6 +208,7 @@ namespace SessionApp1.Services
             {
                 throw new Exception($"Ошибка загрузки фурнитуры: {ex.Message}", ex);
             }
+
             return fittings;
         }
 
@@ -252,6 +256,7 @@ namespace SessionApp1.Services
             {
                 throw new Exception($"Ошибка загрузки изделий: {ex.Message}", ex);
             }
+
             return goods;
         }
 
@@ -287,6 +292,7 @@ namespace SessionApp1.Services
                 // Это сообщение об ошибке, которое вы видели
                 throw new Exception($"Ошибка загрузки остатков тканей: {ex.Message}", ex);
             }
+
             return stock;
         }
 
@@ -319,7 +325,219 @@ namespace SessionApp1.Services
             {
                 throw new Exception($"Ошибка загрузки остатков фурнитуры: {ex.Message}", ex);
             }
+
             return stock;
         }
+
+
+        // Метод для получения списка всех материалов (тканей и фурнитуры)
+
+
+        // Метод для сохранения документа поступления и обновления остатков
+        public async Task SaveReceiptDocumentAsync(ReceiptDocument document, List<ReceiptDocumentItem> items)
+        {
+            using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var transaction = await connection.BeginTransactionAsync();
+
+            try
+            {
+                // 1. Сохраняем заголовок документа
+                var docCommand = new NpgsqlCommand(
+                    "INSERT INTO receipt_documents (document_number, document_date, supplier) VALUES (@number, @date, @supplier) RETURNING id",
+                    connection, transaction);
+                docCommand.Parameters.AddWithValue("number", document.DocumentNumber);
+                docCommand.Parameters.AddWithValue("date", document.DocumentDate);
+                docCommand.Parameters.AddWithValue("supplier", (object)document.Supplier ?? DBNull.Value);
+                var documentId = (int)await docCommand.ExecuteScalarAsync();
+
+                System.Diagnostics.Debug.WriteLine($"Создан документ с ID: {documentId}");
+
+                // 2. Обрабатываем каждую позицию документа
+                for (int i = 0; i < items.Count; i++)
+                {
+                    var item = items[i];
+
+                    // ИСПРАВЛЕНО: Убираем поле unit из INSERT запроса
+                    var itemCommand = new NpgsqlCommand(
+                        "INSERT INTO receipt_document_items (document_id, material_article, quantity, price) VALUES (@doc_id, @article, @qty, @price)",
+                        connection, transaction);
+                    itemCommand.Parameters.AddWithValue("doc_id", documentId);
+                    itemCommand.Parameters.AddWithValue("article", item.MaterialArticle);
+                    itemCommand.Parameters.AddWithValue("qty", item.Quantity);
+                    itemCommand.Parameters.AddWithValue("price", item.Price);
+
+                    await itemCommand.ExecuteNonQueryAsync();
+
+                    // 3. Обновляем остатки (логика остается прежней)
+                    await UpdateMaterialStockAsync(connection, transaction, item, documentId, i);
+                }
+
+                await transaction.CommitAsync();
+                System.Diagnostics.Debug.WriteLine("Транзакция успешно завершена");
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                System.Diagnostics.Debug.WriteLine($"Ошибка при сохранении документа: {ex}");
+                throw new Exception($"Ошибка при проведении документа: {ex.Message}", ex);
+            }
+        }
+
+
+        // НОВЫЙ ВСПОМОГАТЕЛЬНЫЙ МЕТОД для обновления остатков
+        private async Task UpdateMaterialStockAsync(NpgsqlConnection connection, NpgsqlTransaction transaction,
+            ReceiptDocumentItem item, int documentId, int itemIndex)
+        {
+            // Проверяем, является ли материал тканью
+            var fabricCheckCmd = new NpgsqlCommand(
+                "SELECT article, width_mm, unit FROM fabrics WHERE article = @article",
+                connection, transaction);
+            fabricCheckCmd.Parameters.AddWithValue("article", item.MaterialArticle);
+
+            using var fabricReader = await fabricCheckCmd.ExecuteReaderAsync();
+            bool isFabric = await fabricReader.ReadAsync();
+
+            if (isFabric)
+            {
+                // ЭТО ТКАНЬ - добавляем новый рулон
+                var width = fabricReader.GetInt32("width_mm");
+                var unit = fabricReader.GetString("unit");
+                fabricReader.Close();
+
+                var rollId = $"ПРИХ-{documentId}-{itemIndex + 1}";
+                var lengthMm = (int)(item.Quantity * 1000); // Преобразуем метры в мм
+
+                var fabricStockCmd = new NpgsqlCommand(@"
+            INSERT INTO fabric_stock (roll_id, fabric_article, length_mm, width_mm, unit) 
+            VALUES (@roll_id, @article, @length, @width, @unit)",
+                    connection, transaction);
+
+                fabricStockCmd.Parameters.AddWithValue("roll_id", rollId);
+                fabricStockCmd.Parameters.AddWithValue("article", item.MaterialArticle);
+                fabricStockCmd.Parameters.AddWithValue("length", lengthMm);
+                fabricStockCmd.Parameters.AddWithValue("width", width);
+                fabricStockCmd.Parameters.AddWithValue("unit", unit);
+
+                await fabricStockCmd.ExecuteNonQueryAsync();
+                System.Diagnostics.Debug.WriteLine($"Добавлен рулон ткани: {rollId}, длина: {lengthMm}мм");
+            }
+            else
+            {
+                fabricReader.Close();
+
+                // Проверяем, является ли материал фурнитурой
+                var fittingCheckCmd = new NpgsqlCommand(
+                    "SELECT article FROM fittings WHERE article = @article",
+                    connection, transaction);
+                fittingCheckCmd.Parameters.AddWithValue("article", item.MaterialArticle);
+
+                using var fittingReader = await fittingCheckCmd.ExecuteReaderAsync();
+                bool isFitting = await fittingReader.ReadAsync();
+                fittingReader.Close();
+
+                if (isFitting)
+                {
+                    // ЭТО ФУРНИТУРА - обновляем количество
+                    var batchId = $"ПРИХ-{documentId}";
+                    var quantity = (int)item.Quantity;
+
+                    // ИСПРАВЛЕНО: Правильная логика INSERT или UPDATE
+                    var fittingStockCmd = new NpgsqlCommand(@"
+                INSERT INTO fitting_stock (batch_id, fitting_article, quantity) 
+                VALUES (@batch_id, @article, @qty)
+                ON CONFLICT (batch_id, fitting_article) 
+                DO UPDATE SET quantity = fitting_stock.quantity + EXCLUDED.quantity",
+                        connection, transaction);
+
+                    fittingStockCmd.Parameters.AddWithValue("batch_id", batchId);
+                    fittingStockCmd.Parameters.AddWithValue("article", item.MaterialArticle);
+                    fittingStockCmd.Parameters.AddWithValue("qty", quantity);
+
+                    await fittingStockCmd.ExecuteNonQueryAsync();
+                    System.Diagnostics.Debug.WriteLine($"Обновлена фурнитура: {item.MaterialArticle}, +{quantity} шт");
+                }
+                else
+                {
+                    throw new Exception($"Материал '{item.MaterialArticle}' не найден ни в тканях, ни в фурнитуре!");
+                }
+            }
+        }
+        // Замените метод GetAllMaterialsAsync в DatabaseService.cs на этот:
+
+        public async Task<Dictionary<string, MaterialInfo>> GetAllMaterialsWithUnitsAsync()
+        {
+            var materials = new Dictionary<string, MaterialInfo>();
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // Загружаем ткани с их единицами измерения
+                using (var cmd = new NpgsqlCommand(@"
+            SELECT DISTINCT f.article, COALESCE(fn.name, f.article) as name, f.unit
+            FROM fabrics f 
+            LEFT JOIN lookup_fabric_names fn ON f.name_code = fn.id 
+            WHERE f.article IS NOT NULL AND f.article != ''
+            ORDER BY f.article", connection))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var article = reader.GetString("article");
+                        var name = reader.GetString("name");
+                        var unit = reader.IsDBNull("unit") ? "м" : reader.GetString("unit");
+
+                        materials[article] = new MaterialInfo
+                        {
+                            Name = $"[ТКАНЬ] {name} ({article})",
+                            Unit = unit
+                        };
+                    }
+                }
+
+                // Загружаем фурнитуру с их единицами измерения
+                using (var cmd = new NpgsqlCommand(@"
+            SELECT DISTINCT article, name, dimension_unit 
+            FROM fittings 
+            WHERE article IS NOT NULL AND article != ''
+            ORDER BY article", connection))
+                {
+                    using var reader = await cmd.ExecuteReaderAsync();
+                    while (await reader.ReadAsync())
+                    {
+                        var article = reader.GetString("article");
+                        var name = reader.GetString("name");
+                        var unit = reader.IsDBNull("dimension_unit") ? "шт" : reader.GetString("dimension_unit");
+
+                        materials[article] = new MaterialInfo
+                        {
+                            Name = $"[ФУРНИТУРА] {name} ({article})",
+                            Unit = unit
+                        };
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"Загружено материалов: {materials.Count}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Ошибка загрузки материалов: {ex.Message}");
+                throw new Exception($"Ошибка загрузки списка материалов: {ex.Message}", ex);
+            }
+
+            return materials;
+        }
+
+        // Добавьте также старый метод для совместимости
+        public async Task<Dictionary<string, string>> GetAllMaterialsAsync()
+        {
+            var materialsWithUnits = await GetAllMaterialsWithUnitsAsync();
+            return materialsWithUnits.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name);
+        }
+
     }
+
 }

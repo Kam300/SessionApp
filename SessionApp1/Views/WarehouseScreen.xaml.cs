@@ -24,6 +24,13 @@ namespace SessionApp1.Views
             mainWindow.NavigateToPage(new LoginPage());
         }
 
+        private void CreateReceipt_Click(object sender, RoutedEventArgs e)
+        {
+            var receiptWindow = new ReceiptDocumentWindow();
+            receiptWindow.ShowDialog(); // Открываем как модальное окно
+            // Здесь можно добавить код для обновления данных на форме кладовщика, если нужно
+        }
+
         private void FabricsButton_Click(object sender, RoutedEventArgs e)
         {
             ContentFrame.Navigate(new FabricsListPage());

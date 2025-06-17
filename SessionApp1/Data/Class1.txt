@@ -148,6 +148,23 @@ CREATE TABLE IF NOT EXISTS users (
     passwordhash TEXT NOT NULL
 );
 
+-- Таблицы для документа "Поступление материалов"
+CREATE TABLE receipt_documents (
+    id SERIAL PRIMARY KEY,
+    document_number TEXT NOT NULL,
+    document_date DATE NOT NULL,
+    supplier TEXT
+);
+
+CREATE TABLE receipt_document_items (
+    id SERIAL PRIMARY KEY,
+    document_id INT NOT NULL REFERENCES receipt_documents(id) ON DELETE CASCADE,
+    material_article VARCHAR(50) NOT NULL,
+    quantity NUMERIC(12, 3) NOT NULL CHECK (quantity > 0),
+    price NUMERIC(12, 2) NOT NULL CHECK (price >= 0)
+);
+
+
 -- Вставка ролей
 INSERT INTO roles (name) VALUES 
 ('Заказчик'),
