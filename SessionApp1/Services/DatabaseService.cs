@@ -254,5 +254,72 @@ namespace SessionApp1.Services
             }
             return goods;
         }
+
+        // НОВЫЙ МЕТОД: Для загрузки остатков ткани из таблицы fabric_stock
+        public async Task<List<FabricStock>> GetFabricStockAsync()
+        {
+            var stock = new List<FabricStock>();
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // Простой запрос к таблице остатков ткани
+                using var command = new NpgsqlCommand(@"
+                    SELECT roll_id, fabric_article, length_mm, width_mm, unit 
+                    FROM fabric_stock", connection);
+
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    stock.Add(new FabricStock
+                    {
+                        RollId = reader.GetString("roll_id"),
+                        FabricArticle = reader.GetString("fabric_article"),
+                        LengthMm = reader.GetInt32("length_mm"),
+                        WidthMm = reader.GetInt32("width_mm"),
+                        Unit = reader.GetString("unit")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                // Это сообщение об ошибке, которое вы видели
+                throw new Exception($"Ошибка загрузки остатков тканей: {ex.Message}", ex);
+            }
+            return stock;
+        }
+
+        // НОВЫЙ МЕТОД: Для загрузки остатков фурнитуры из таблицы fitting_stock
+        public async Task<List<FittingStock>> GetFittingStockAsync()
+        {
+            var stock = new List<FittingStock>();
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // Простой запрос к таблице остатков фурнитуры
+                using var command = new NpgsqlCommand(@"
+                    SELECT batch_id, fitting_article, quantity 
+                    FROM fitting_stock", connection);
+
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    stock.Add(new FittingStock
+                    {
+                        BatchId = reader.GetString("batch_id"),
+                        FittingArticle = reader.GetString("fitting_article"),
+                        Quantity = reader.GetInt32("quantity")
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка загрузки остатков фурнитуры: {ex.Message}", ex);
+            }
+            return stock;
+        }
     }
 }

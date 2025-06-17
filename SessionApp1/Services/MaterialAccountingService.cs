@@ -13,7 +13,7 @@ namespace SessionApp1.Services
 
         public MaterialAccountingService()
         {
-            _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432";
+            _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
         }
 
         public async Task<List<FabricStockInfo>> GetFabricStockWithUnitsAsync()
@@ -36,7 +36,7 @@ namespace SessionApp1.Services
                         ROUND((COALESCE(fs.length_mm, 0) * COALESCE(fs.width_mm, 0) / 1000000.0), 2) as area_sqm,
                         ROUND((COALESCE(fs.length_mm, 0) / 1000.0), 2) as length_m,
                         ROUND((COALESCE(f.price, 0) * COALESCE(fs.length_mm, 0) / 1000.0), 2) as total_cost
-                    FROM fabric_stock fs
+                    FROM fabric_stock as fs
                     LEFT JOIN fabrics f ON fs.fabric_article = f.article
                     LEFT JOIN lookup_fabric_names fn ON f.name_code = fn.id
                     ORDER BY fs.fabric_article", connection);
