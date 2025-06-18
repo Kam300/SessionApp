@@ -103,7 +103,7 @@
         <!-- Кнопки управления -->
         <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" 
                     HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="Печать спецификации" Width="180" Height="30" 
+            <Button x:Name="PrintSpecificationButton" Content="Печать спецификации" Width="180" Height="30" 
                     Margin="0,0,10,0" Click="PrintSpecification_Click"/>
             <Button Content="Закрыть" Width="100" Height="30" Click="Close_Click"/>
         </StackPanel>

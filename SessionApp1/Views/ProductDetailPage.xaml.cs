@@ -17,13 +17,28 @@ namespace SessionApp1.Views
         private ManufacturedGood _currentProduct;
         private List<ProductSpecificationViewModel> _currentSpecification;
         private List<DateTime> _specificationDates;
+        private User? _currentUser;
 
-        public ProductDetailPage(string productArticle)
+        public ProductDetailPage(string productArticle, User? currentUser = null)
         {
             InitializeComponent();
             _databaseService = new DatabaseService();
             _materialService = new MaterialAccountingService();
+            _currentUser = currentUser;
+            
+            // Настраиваем доступность элементов в зависимости от роли пользователя
+            ConfigureUIForUserRole();
+            
             LoadProductDetails(productArticle);
+        }
+        
+        private void ConfigureUIForUserRole()
+        {
+            // Если пользователь - заказчик (роль = 3) или пользователь не указан, скрываем кнопку печати спецификации
+            if (_currentUser == null || _currentUser.RoleId == 3) // 3 - роль заказчика
+            {
+                PrintSpecificationButton.Visibility = Visibility.Collapsed;
+            }
         }
 
         private async void LoadProductDetails(string productArticle)

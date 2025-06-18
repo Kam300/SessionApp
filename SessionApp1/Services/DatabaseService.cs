@@ -633,30 +633,27 @@ namespace SessionApp1.Services
         }
 
         public async Task<Fitting?> GetFittingByArticleAsync(string article)
+    {
+        try
         {
-            try
-            {
-                using var connection = new NpgsqlConnection(_connectionString);
-                await connection.OpenAsync();
+            using var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
 
-                using var command = new NpgsqlCommand(@"
+            using var command = new NpgsqlCommand(@"
                 SELECT 
                     f.article,
-                    f.name_code,
-                    f.color_code,
+                    f.name,
+                    f.width_mm,
+                    f.length_mm,
+                    COALESCE(f.dimension_unit, 'мм') as dimension_unit,
+                    f.weight_value,
+                    COALESCE(f.weight_unit, 'г') as weight_unit,
                     f.type_code,
                     f.image_path,
-                    f.width_mm,
-                    f.height_mm,
-                    f.unit,
                     f.price,
-                    COALESCE(fn.name, '') as fittingname,
-                    COALESCE(c.name, '') as colorname,
-                    COALESCE(t.name, '') as typename
+                    COALESCE(ft.name, '') as typename
                 FROM fittings f
-                LEFT JOIN lookup_fitting_names fn ON f.name_code = fn.id
-                LEFT JOIN lookup_colors c ON f.color_code = c.id
-                LEFT JOIN lookup_fitting_types t ON f.type_code = t.id
+                LEFT JOIN lookup_fitting_types ft ON f.type_code = ft.id
                 WHERE f.article = @article", connection);
 
                 command.Parameters.AddWithValue("article", article);
@@ -668,17 +665,17 @@ namespace SessionApp1.Services
                     return new Fitting
                     {
                         Article = reader.GetString("article"),
-                        NameCode = reader.GetInt32("name_code"),
-                        ColorCode = reader.GetInt32("color_code"),
+                        Name = reader.GetString("name"),
+                        WidthMm = (int)reader.GetDecimal("width_mm"),
+                        LengthMm = reader.GetDecimal("length_mm").ToString(),
+                        DimensionUnit = reader.GetString("dimension_unit"),
+                        WeightValue = reader.GetDecimal("weight_value").ToString(),
+                        WeightUnit = reader.GetString("weight_unit"),
                         TypeCode = reader.GetInt32("type_code"),
                         ImagePath = reader.GetString("image_path"),
-                        WidthMm = reader.GetInt32("width_mm"),
-                        HeightMm = reader.GetInt32("height_mm"),
-                        Unit = reader.GetString("unit"),
                         Price = reader.GetDecimal("price"),
-                        FittingName = reader.IsDBNull(reader.GetOrdinal("fittingname")) ? "" : reader.GetString("fittingname"),
-                        ColorName = reader.IsDBNull(reader.GetOrdinal("colorname")) ? "" : reader.GetString("colorname"),
-                        TypeName = reader.IsDBNull(reader.GetOrdinal("typename")) ? "" : reader.GetString("typename")
+                        TypeName = reader.GetString("typename"),
+                        FittingName = reader.GetString("name") // Используем имя из поля name
                     };
                 }
 

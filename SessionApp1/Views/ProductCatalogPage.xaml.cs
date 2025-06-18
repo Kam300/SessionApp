@@ -1,10 +1,11 @@
-﻿using SessionApp1.Models;
+using SessionApp1.Models;
 using SessionApp1.Services;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace SessionApp1.Views
 {
@@ -27,6 +28,9 @@ namespace SessionApp1.Views
                 Status = "Формируется"
             };
             LoadProducts();
+            
+            // Добавляем обработчик двойного клика для открытия деталей изделия
+            ProductsDataGrid.MouseDoubleClick += ProductsDataGrid_MouseDoubleClick;
         }
 
         private async void LoadProducts()
@@ -102,6 +106,35 @@ namespace SessionApp1.Views
                     Customer = _currentUser.FullName,
                     Status = "Формируется"
                 };
+            }
+        }
+        
+        private void ProductsDataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (ProductsDataGrid.SelectedItem is ManufacturedGood selectedProduct)
+            {
+                try
+                {
+                    // Открываем страницу с деталями изделия, передавая информацию о текущем пользователе
+                    var detailPage = new ProductDetailPage(selectedProduct.Article, _currentUser);
+                    
+                    // Создаем новое окно для отображения деталей изделия
+                    var detailWindow = new Window
+                    {
+                        Title = $"Детали изделия: {selectedProduct.Name}",
+                        Content = detailPage,
+                        Width = 900,
+                        Height = 700,
+                        WindowStartupLocation = WindowStartupLocation.CenterScreen
+                    };
+                    
+                    detailWindow.ShowDialog();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Ошибка при открытии деталей изделия: {ex.Message}", "Ошибка",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             }
         }
     }
