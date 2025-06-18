@@ -121,7 +121,7 @@ namespace SessionApp1.Views
             var fittingElement = new Border
             {
                 Width = (double)Math.Max(fitting.WidthMm / 10, 20), // Масштабируем размер
-                Height = (double)Math.Max(fitting.LengthMm / 10, 20),
+                Height = (double)Math.Max(double.Parse(fitting.LengthMm) / 10, 20),
                 Background = new SolidColorBrush(Colors.Orange),
                 BorderBrush = new SolidColorBrush(Colors.DarkOrange),
                 BorderThickness = new Thickness(2),
@@ -274,7 +274,7 @@ namespace SessionApp1.Views
                         Article = "CUSTOM_" + DateTime.Now.Ticks,
                         Name = "Пользовательская фурнитура",
                         WidthMm = 30,
-                        LengthMm = 30,
+                        LengthMm = 30.ToString(),
                         ImagePath = openFileDialog.FileName
                     };
 

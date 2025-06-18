@@ -1,4 +1,4 @@
-﻿<Window x:Class="SessionApp1.MainWindow"
+<Window x:Class="SessionApp1.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Система управления текстильным производством" 
@@ -13,9 +13,9 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок с логотипом -->
-        <Border Grid.Row="0" Background="#FFB5D5CA" Padding="20,10">
+        <Border Grid.Row="0" Background="#B5D5CA" Padding="20,10">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                <Rectangle Width="60" Height="60" Fill="#FFE0A9AF" Margin="0,0,20,0"/>
+                <Image Source="/Logo/logo-04.jpg" Width="180" Height="60" Margin="0,0,20,0"/>
                 <TextBlock Text="Система управления текстильным производством" 
                            FontSize="24" FontWeight="Bold" 
                            Foreground="Black" VerticalAlignment="Center"/>

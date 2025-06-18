@@ -3,6 +3,7 @@ using SessionApp1.Models;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SessionApp1.Services
@@ -10,10 +11,12 @@ namespace SessionApp1.Services
     public class MaterialAccountingService
     {
         private readonly string _connectionString;
+        private readonly DatabaseService _databaseService;
 
         public MaterialAccountingService()
         {
             _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";
+            _databaseService = new DatabaseService();
         }
 
         public async Task<List<FabricStockInfo>> GetFabricStockWithUnitsAsync()
@@ -145,5 +148,322 @@ namespace SessionApp1.Services
                 throw new Exception($"Ошибка расчета средней стоимости: {ex.Message}", ex);
             }
         }
+
+        /// <summary>
+        /// Получает спецификации для указанного изделия
+        /// </summary>
+        /// <param name="productArticle">Артикул изделия</param>
+        /// <returns>Список спецификаций</returns>
+        public async Task<List<ProductSpecification>> GetProductSpecificationsAsync(string productArticle)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                // В реальном приложении здесь будет запрос к базе данных
+                // Для демонстрации создаем тестовые данные из региона тестовых данных
+                var specs = GetSampleSpecifications(productArticle);
+                return await Task.FromResult(specs);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при получении спецификаций: {ex.Message}");
+                return new List<ProductSpecification>();
+            }
+        }
+
+        /// <summary>
+        /// Создает тестовые данные спецификаций для демонстрации (устаревший метод)
+        /// </summary>
+        /// <param name="productArticle">Артикул изделия</param>
+        /// <returns>Список спецификаций</returns>
+        private List<ProductSpecification> GetSampleSpecificationsOld(string productArticle)
+        {
+            var specs = new List<ProductSpecification>();
+            
+            // Создаем историю изменений спецификации для демонстрации
+            // Первая версия спецификации (3 месяца назад)
+            var oldDate = DateTime.Now.AddMonths(-3);
+            specs.Add(new ProductSpecification
+            {
+                Id = "1",
+                ProductArticle = productArticle,
+                MaterialArticle = "F001",
+                MaterialType = "fabric",
+                Quantity = 1.5m,
+                Unit = "м",
+                CreatedDate = oldDate,
+                CreatedBy = "Иванов И.И."
+            });
+            
+            specs.Add(new ProductSpecification
+            {
+                Id = "2",
+                ProductArticle = productArticle,
+                MaterialArticle = "FT001",
+                MaterialType = "fitting",
+                Quantity = 5,
+                Unit = "шт",
+                CreatedDate = oldDate,
+                CreatedBy = "Иванов И.И."
+            });
+            
+            // Вторая версия спецификации (1 месяц назад)
+            var mediumDate = DateTime.Now.AddMonths(-1);
+            specs.Add(new ProductSpecification
+            {
+                Id = "3",
+                ProductArticle = productArticle,
+                MaterialArticle = "F001",
+                MaterialType = "fabric",
+                Quantity = 1.5m,
+                Unit = "м",
+                CreatedDate = mediumDate,
+                CreatedBy = "Петров П.П."
+            });
+            
+            specs.Add(new ProductSpecification
+            {
+                Id = "4",
+                ProductArticle = productArticle,
+                MaterialArticle = "FT002", // Изменили фурнитуру
+                MaterialType = "fitting",
+                Quantity = 6, // Увеличили количество
+                Unit = "шт",
+                CreatedDate = mediumDate,
+                CreatedBy = "Петров П.П."
+            });
+            
+            // Текущая версия спецификации
+            var currentDate = DateTime.Now;
+            specs.Add(new ProductSpecification
+            {
+                Id = "5",
+                ProductArticle = productArticle,
+                MaterialArticle = "F002", // Изменили ткань
+                MaterialType = "fabric",
+                Quantity = 1.7m, // Увеличили расход ткани
+                Unit = "м",
+                CreatedDate = currentDate,
+                CreatedBy = "Сидоров С.С."
+            });
+            
+            specs.Add(new ProductSpecification
+            {
+                Id = "6",
+                ProductArticle = productArticle,
+                MaterialArticle = "FT002",
+                MaterialType = "fitting",
+                Quantity = 6,
+                Unit = "шт",
+                CreatedDate = currentDate,
+                CreatedBy = "Сидоров С.С."
+            });
+            
+            return specs;
+        }
+
+        /// <summary>
+        /// Получает спецификации для указанного изделия на определенную дату
+        /// </summary>
+        /// <param name="productArticle">Артикул изделия</param>
+        /// <param name="date">Дата спецификации</param>
+        /// <returns>Список спецификаций</returns>
+        public async Task<List<ProductSpecification>> GetProductSpecificationsAsync(string productArticle, DateTime date)
+        {
+            try
+            {
+                var allSpecs = await GetProductSpecificationsAsync(productArticle);
+                return allSpecs.Where(s => s.CreatedDate.Date == date.Date).ToList();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при получении спецификаций по дате: {ex.Message}");
+                return new List<ProductSpecification>();
+            }
+        }
+
+        /// <summary>
+        /// Проверяет, является ли остаток материала обрезком
+        /// </summary>
+        /// <param name="materialArticle">Артикул материала</param>
+        /// <param name="materialType">Тип материала</param>
+        /// <param name="remainingQuantity">Оставшееся количество</param>
+        /// <returns>True, если остаток является обрезком</returns>
+        public async Task<bool> IsScrapAsync(string materialArticle, string materialType, decimal remainingQuantity)
+        {
+            try
+            {
+                // В реальном приложении здесь будет запрос к базе данных для получения настроек обрезков для материала
+                // Для демонстрации используем тестовые данные
+                if (materialType == "fabric")
+                {
+                    // Для тканей обрезком считается остаток менее 0.5 кв.м
+                    return remainingQuantity < 0.5m;
+                }
+                else if (materialType == "fitting")
+                {
+                    // Для фурнитуры обрезком считается остаток менее 10 штук или 0.1 кг в зависимости от единицы измерения
+                    var fitting = await _databaseService.GetFittingByArticleAsync(materialArticle);
+                    if (fitting != null)
+                    {
+                        if (fitting.Unit == "шт")
+                            return remainingQuantity < 10;
+                        else if (fitting.Unit == "кг")
+                            return remainingQuantity < 0.1m;
+                    }
+                }
+
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка при проверке обрезков: {ex.Message}");
+                return false;
+            }
+        }
+
+        #region Тестовые данные
+
+        // Метод для создания тестовых данных спецификаций
+        private List<ProductSpecification> GetSampleSpecifications(string productArticle)
+        {
+            var result = new List<ProductSpecification>();
+
+            // Текущая спецификация (сегодня)
+            var currentDate = DateTime.Today;
+            result.AddRange(GetSpecificationForDate(productArticle, currentDate));
+
+            // Предыдущая версия спецификации (месяц назад)
+            var previousDate = DateTime.Today.AddMonths(-1);
+            result.AddRange(GetSpecificationForDate(productArticle, previousDate, true));
+
+            // Еще более старая версия (3 месяца назад)
+            var oldDate = DateTime.Today.AddMonths(-3);
+            result.AddRange(GetSpecificationForDate(productArticle, oldDate, true));
+
+            return result;
+        }
+
+        // Метод для создания спецификации на конкретную дату
+        private List<ProductSpecification> GetSpecificationForDate(string productArticle, DateTime date, bool isOld = false)
+        {
+            var specs = new List<ProductSpecification>();
+
+            // Разные спецификации в зависимости от артикула изделия
+            if (productArticle == "P001")
+            {
+                // Полотенце
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = isOld ? "F001" : "F002", // В старой версии использовалась другая ткань
+                    MaterialType = "fabric",
+                    Quantity = 0.5m,
+                    Unit = "м²",
+                    CreatedDate = date,
+                    CreatedBy = "Иванов И.И."
+                });
+
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "T001",
+                    MaterialType = "fitting",
+                    Quantity = 0.2m,
+                    Unit = "м",
+                    CreatedDate = date,
+                    CreatedBy = "Иванов И.И."
+                });
+            }
+            else if (productArticle == "P002")
+            {
+                // Плед
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "F003",
+                    MaterialType = "fabric",
+                    Quantity = 2.0m,
+                    Unit = "м²",
+                    CreatedDate = date,
+                    CreatedBy = "Петров П.П."
+                });
+
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = isOld ? "T002" : "T003", // В старой версии использовалась другая окантовка
+                    MaterialType = "fitting",
+                    Quantity = 5.0m,
+                    Unit = "м",
+                    CreatedDate = date,
+                    CreatedBy = "Петров П.П."
+                });
+            }
+            else if (productArticle == "P003")
+            {
+                // Подушка
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "F004",
+                    MaterialType = "fabric",
+                    Quantity = 0.8m,
+                    Unit = "м²",
+                    CreatedDate = date,
+                    CreatedBy = "Сидоров С.С."
+                });
+
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "T004",
+                    MaterialType = "fitting",
+                    Quantity = isOld ? 0.3m : 0.4m, // В новой версии используется больше наполнителя
+                    Unit = "кг",
+                    CreatedDate = date,
+                    CreatedBy = "Сидоров С.С."
+                });
+            }
+            else
+            {
+                // Для других артикулов - пример спецификации
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "F001",
+                    MaterialType = "fabric",
+                    Quantity = 1.0m,
+                    Unit = "м²",
+                    CreatedDate = date,
+                    CreatedBy = "Администратор"
+                });
+
+                specs.Add(new ProductSpecification
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProductArticle = productArticle,
+                    MaterialArticle = "T001",
+                    MaterialType = "fitting",
+                    Quantity = 2.0m,
+                    Unit = "м",
+                    CreatedDate = date,
+                    CreatedBy = "Администратор"
+                });
+            }
+
+            return specs;
+        }
+
+        #endregion
     }
 }

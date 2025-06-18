@@ -3,6 +3,69 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-
+        <!-- Основные цвета -->
+        <SolidColorBrush x:Key="PrimaryColor" Color="#B5D5CA"/>
+        <SolidColorBrush x:Key="SecondaryColor" Color="#E0A9AF"/>
+        <SolidColorBrush x:Key="BackgroundColor" Color="#FFE0D5CA"/>
+        
+        <!-- Дополнительные цвета -->
+        <SolidColorBrush x:Key="AccentColor1" Color="#D1EEFC"/>
+        <SolidColorBrush x:Key="AccentColor2" Color="#FFFCD6"/>
+        <SolidColorBrush x:Key="SecondaryLightColor" Color="#FFFFFF"/>
+        
+        <!-- Цвета текста -->
+        <SolidColorBrush x:Key="TextColorLight" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextDarkColor" Color="#000000"/>
+        
+        <!-- Стили кнопок -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource PrimaryColor}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkColor}"/>
+            <Setter Property="Padding" Value="15,8"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                CornerRadius="4" 
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#A5C5BA"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- Стандартная кнопка -->
+        <Style x:Key="StandardButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource AccentColor1}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkColor}"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#C1DEEC"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        
+        <!-- Акцентная кнопка -->
+        <Style x:Key="AccentButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="{StaticResource SecondaryColor}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextDarkColor}"/>
+            <Setter Property="Padding" Value="15,5"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#D0999F"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </Application.Resources>
 </Application>

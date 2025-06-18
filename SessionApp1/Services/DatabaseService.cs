@@ -1,4 +1,4 @@
-﻿using Npgsql;
+using Npgsql;
 using SessionApp1.Models;
 using System;
 using System.Collections.Generic;
@@ -192,10 +192,10 @@ namespace SessionApp1.Services
                     {
                         Article = reader.GetString("article"),
                         Name = reader.GetString("name"),
-                        WidthMm = reader.GetDecimal("width_mm"),
-                        LengthMm = reader.GetDecimal("length_mm"),
+                        WidthMm = (int)reader.GetDecimal("width_mm"),
+                        LengthMm = reader.GetDecimal("length_mm").ToString(),
                         DimensionUnit = reader.GetString("dimension_unit"),
-                        WeightValue = reader.GetDecimal("weight_value"),
+                        WeightValue = reader.GetDecimal("weight_value").ToString(),
                         WeightUnit = reader.GetString("weight_unit"),
                         TypeCode = reader.GetInt32("type_code"),
                         ImagePath = reader.GetString("image_path"), // Используем путь как есть из БД
@@ -569,6 +569,126 @@ namespace SessionApp1.Services
 
 
 
+        public async Task<Fabric?> GetFabricByArticleAsync(string article)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new NpgsqlCommand(@"
+                SELECT 
+                    f.article,
+                    f.name_code,
+                    f.color_code,
+                    f.pattern_code,
+                    f.image_path,
+                    f.composition_code,
+                    f.width_mm,
+                    f.length_mm,
+                    f.unit,
+                    f.price,
+                    COALESCE(fn.name, '') as fabricname,
+                    COALESCE(c.name, '') as colorname,
+                    COALESCE(p.name, '') as patternname,
+                    COALESCE(comp.name, '') as compositionname
+                FROM fabrics f
+                LEFT JOIN lookup_fabric_names fn ON f.name_code = fn.id
+                LEFT JOIN lookup_colors c ON f.color_code = c.id
+                LEFT JOIN lookup_patterns p ON f.pattern_code = p.id
+                LEFT JOIN lookup_compositions comp ON f.composition_code = comp.id
+                WHERE f.article = @article", connection);
+
+                command.Parameters.AddWithValue("article", article);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    return new Fabric
+                    {
+                        Article = reader.GetString("article"),
+                        NameCode = reader.GetInt32("name_code"),
+                        ColorCode = reader.GetInt32("color_code"),
+                        PatternCode = reader.GetInt32("pattern_code"),
+                        ImagePath = reader.GetString("image_path"),
+                        CompositionCode = reader.GetInt32("composition_code"),
+                        WidthMm = reader.GetInt32("width_mm"),
+                        LengthMm = reader.GetInt32("length_mm"),
+                        Unit = reader.GetString("unit"),
+                        Price = reader.GetDecimal("price"),
+                        FabricName = reader.IsDBNull(reader.GetOrdinal("fabricname")) ? "" : reader.GetString("fabricname"),
+                        ColorName = reader.IsDBNull(reader.GetOrdinal("colorname")) ? "" : reader.GetString("colorname"),
+                        PatternName = reader.IsDBNull(reader.GetOrdinal("patternname")) ? "" : reader.GetString("patternname"),
+                        CompositionName = reader.IsDBNull(reader.GetOrdinal("compositionname")) ? "" : reader.GetString("compositionname")
+                    };
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка получения ткани по артикулу: {ex.Message}", ex);
+            }
+        }
+
+        public async Task<Fitting?> GetFittingByArticleAsync(string article)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new NpgsqlCommand(@"
+                SELECT 
+                    f.article,
+                    f.name_code,
+                    f.color_code,
+                    f.type_code,
+                    f.image_path,
+                    f.width_mm,
+                    f.height_mm,
+                    f.unit,
+                    f.price,
+                    COALESCE(fn.name, '') as fittingname,
+                    COALESCE(c.name, '') as colorname,
+                    COALESCE(t.name, '') as typename
+                FROM fittings f
+                LEFT JOIN lookup_fitting_names fn ON f.name_code = fn.id
+                LEFT JOIN lookup_colors c ON f.color_code = c.id
+                LEFT JOIN lookup_fitting_types t ON f.type_code = t.id
+                WHERE f.article = @article", connection);
+
+                command.Parameters.AddWithValue("article", article);
+
+                using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                {
+                    return new Fitting
+                    {
+                        Article = reader.GetString("article"),
+                        NameCode = reader.GetInt32("name_code"),
+                        ColorCode = reader.GetInt32("color_code"),
+                        TypeCode = reader.GetInt32("type_code"),
+                        ImagePath = reader.GetString("image_path"),
+                        WidthMm = reader.GetInt32("width_mm"),
+                        HeightMm = reader.GetInt32("height_mm"),
+                        Unit = reader.GetString("unit"),
+                        Price = reader.GetDecimal("price"),
+                        FittingName = reader.IsDBNull(reader.GetOrdinal("fittingname")) ? "" : reader.GetString("fittingname"),
+                        ColorName = reader.IsDBNull(reader.GetOrdinal("colorname")) ? "" : reader.GetString("colorname"),
+                        TypeName = reader.IsDBNull(reader.GetOrdinal("typename")) ? "" : reader.GetString("typename")
+                    };
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка получения фурнитуры по артикулу: {ex.Message}", ex);
+            }
+        }
     }
 
 

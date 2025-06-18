@@ -1,0 +1,111 @@
+﻿<Page x:Class="SessionApp1.Views.ProductDetailPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:converters="clr-namespace:SessionApp1.Converters"
+      Title="Детали изделия"
+      Background="#FFE0D5CA">
+
+    <Page.Resources>
+        <converters:ImagePathConverter x:Key="ImagePathConverter"/>
+    </Page.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="Детали изделия" 
+                   FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+
+        <!-- Изображение изделия -->
+        <Border Grid.Row="1" Grid.Column="0" Width="300" Height="300" 
+                BorderBrush="#FFB5D5CA" BorderThickness="2" Margin="0,0,20,0">
+            <Image x:Name="ProductImage" Stretch="Uniform" 
+                   Source="{Binding ImagePath, Converter={StaticResource ImagePathConverter}}"/>
+        </Border>
+
+        <!-- Информация об изделии -->
+        <Grid Grid.Row="1" Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Артикул:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="0" Grid.Column="1" x:Name="ArticleTextBlock" Margin="0,5"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="Название:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="NameTextBlock" Margin="0,5"/>
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Text="Размеры:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="DimensionsTextBlock" Margin="0,5"/>
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Text="Единица измерения:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="UnitTextBlock" Margin="0,5"/>
+
+            <TextBlock Grid.Row="4" Grid.Column="0" Text="Цена:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="PriceTextBlock" Margin="0,5"/>
+
+            <TextBlock Grid.Row="5" Grid.Column="0" Text="Описание:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="5" Grid.Column="1" x:Name="CommentTextBlock" Margin="0,5" TextWrapping="Wrap"/>
+
+            <TextBlock Grid.Row="6" Grid.Column="0" Text="Инструкции:" FontWeight="Bold" Margin="0,5"/>
+            <TextBlock Grid.Row="6" Grid.Column="1" x:Name="InstructionsTextBlock" Margin="0,5" TextWrapping="Wrap"/>
+        </Grid>
+
+        <!-- Спецификация изделия -->
+        <GroupBox Grid.Row="2" Grid.ColumnSpan="2" Header="Спецификация изделия" Margin="0,20,0,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="История изменений:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <ComboBox x:Name="SpecificationHistoryComboBox" Width="200" 
+                              SelectionChanged="SpecificationHistoryComboBox_SelectionChanged"/>
+                </StackPanel>
+
+                <DataGrid Grid.Row="1" x:Name="SpecificationDataGrid" AutoGenerateColumns="False" 
+                          IsReadOnly="True" HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Тип материала" Binding="{Binding MaterialType}" Width="120"/>
+                        <DataGridTextColumn Header="Артикул материала" Binding="{Binding MaterialArticle}" Width="150"/>
+                        <DataGridTextColumn Header="Название" Binding="{Binding MaterialName}" Width="*"/>
+                        <DataGridTextColumn Header="Количество" Binding="{Binding Quantity}" Width="100"/>
+                        <DataGridTextColumn Header="Единица" Binding="{Binding Unit}" Width="80"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Grid>
+        </GroupBox>
+
+        <!-- Кнопки управления -->
+        <StackPanel Grid.Row="3" Grid.ColumnSpan="2" Orientation="Horizontal" 
+                    HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Печать спецификации" Width="180" Height="30" 
+                    Margin="0,0,10,0" Click="PrintSpecification_Click"/>
+            <Button Content="Закрыть" Width="100" Height="30" Click="Close_Click"/>
+        </StackPanel>
+    </Grid>
+</Page>

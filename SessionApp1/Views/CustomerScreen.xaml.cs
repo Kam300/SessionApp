@@ -1,4 +1,4 @@
-﻿using SessionApp1.Models;
+using SessionApp1.Models;
 using SessionApp1.Services;
 using System;
 using System.Linq;
@@ -7,7 +7,7 @@ using System.Windows.Controls;
 
 namespace SessionApp1.Views
 {
-    public partial class CustomerScreen
+    public partial class CustomerScreen : Page
     {
         private User _currentUser;
 
@@ -26,8 +26,7 @@ namespace SessionApp1.Views
         {
             if (_currentUser != null)
             {
-                // Здесь можно добавить персонализацию интерфейса
-                // Например, показать имя пользователя
+                WelcomeText.Text = $"Добро пожаловать, {_currentUser.FullName}!";
             }
         }
 
@@ -78,13 +77,11 @@ namespace SessionApp1.Views
             }
         }
 
-        private async void Profile_Click(object sender, RoutedEventArgs e)
+        private void LogoutButton_Click(object sender, RoutedEventArgs e)
         {
-          
-                var mainWindow = (MainWindow)Application.Current.MainWindow;
-                mainWindow.NavigateToPage(new LoginPage());
-            
-    }
+            var mainWindow = (MainWindow)Application.Current.MainWindow;
+            mainWindow.NavigateToPage(new LoginPage());
+        }
         
     }
 }

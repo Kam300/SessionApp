@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -22,6 +22,12 @@ namespace SessionApp1.Models
         public string ColorName { get; set; } = string.Empty;
         public string PatternName { get; set; } = string.Empty;
         public string CompositionName { get; set; } = string.Empty;
+        
+        // Свойство для совместимости с существующим кодом
+        public string Name { 
+            get { return FabricName; } 
+            set { FabricName = value; } 
+        }
     }
 
 

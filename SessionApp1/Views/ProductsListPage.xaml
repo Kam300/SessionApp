@@ -1,4 +1,4 @@
-﻿<Page x:Class="SessionApp1.Views.ProductsListPage"
+<Page x:Class="SessionApp1.Views.ProductsListPage"
       xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:converters="clr-namespace:SessionApp1.Converters"
@@ -25,7 +25,8 @@
                   AlternatingRowBackground="#FFF5F5F5"
                   GridLinesVisibility="Horizontal"
                   HeadersVisibility="Column"
-                  RowHeight="120">
+                  RowHeight="120"
+                  MouseDoubleClick="ProductsDataGrid_MouseDoubleClick">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Header="Изображение" Width="120">
                     <DataGridTemplateColumn.CellTemplate>

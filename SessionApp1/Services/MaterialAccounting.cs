@@ -1,4 +1,4 @@
-﻿namespace SessionApp1.Models
+namespace SessionApp1.Models
 {
     public class FabricStockInfo
     {
@@ -51,7 +51,7 @@
 
     public class ProductSpecification
     {
-        public int Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public string ProductArticle { get; set; } = string.Empty;
         public string MaterialArticle { get; set; } = string.Empty;
         public string MaterialType { get; set; } = string.Empty;
