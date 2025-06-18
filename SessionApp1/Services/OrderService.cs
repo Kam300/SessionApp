@@ -1,4 +1,5 @@
 ﻿using Npgsql;
+using NpgsqlTypes;
 using SessionApp1.Models;
 using System;
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace SessionApp1.Services
 
         public OrderService()
         {
-            _connectionString = "Host=localhost;Database=ff;Username=postgres;Password=00000000;Port=5432;Search Path=public";
+            _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432;Search Path=public";
         }
 
         // Получить заказы конкретного заказчика
@@ -42,7 +43,7 @@ namespace SessionApp1.Services
                         CustomerUserId = reader.GetInt32("customer_user_id"),
                         Status = reader.IsDBNull("status") ? "Новый" : reader.GetString("status"),
                         OrderDate = reader.GetDateTime("order_date"),
-                        CustomerName = reader.IsDBNull("customer") ? "" : reader.GetString("customer"),
+                        Customer = reader.IsDBNull("customer") ? "" : reader.GetString("customer"),
                         Manager = reader.IsDBNull("manager") ? "" : reader.GetString("manager"),
                         Items = new List<OrderItem>()
                     });
@@ -83,7 +84,7 @@ namespace SessionApp1.Services
                         CustomerUserId = reader.IsDBNull("customer_user_id") ? 0 : reader.GetInt32("customer_user_id"),
                         Status = reader.IsDBNull("status") ? "Новый" : reader.GetString("status"),
                         OrderDate = reader.GetDateTime("order_date"),
-                        CustomerName = reader.IsDBNull("customer_fullname") ?
+                        Customer = reader.IsDBNull("customer_fullname") ?
                             (reader.IsDBNull("customer") ? "" : reader.GetString("customer")) :
                             reader.GetString("customer_fullname"),
                         Manager = reader.IsDBNull("manager") ? "" : reader.GetString("manager"),
@@ -105,49 +106,89 @@ namespace SessionApp1.Services
         {
             using var connection = new NpgsqlConnection(_connectionString);
             await connection.OpenAsync();
+
             using var transaction = await connection.BeginTransactionAsync();
 
             try
             {
-                // Создаем заголовок заказа
-                var cmd = new NpgsqlCommand(@"
-                    INSERT INTO orders (customer_user_id, status, order_date, customer, manager, total_amount) 
-                    VALUES (@userId, @status, @date, @customer, @manager, @total) 
-                    RETURNING id", connection, transaction);
+                // Исправленный SQL запрос с правильными параметрами
+                const string insertOrderSql = @"
+            INSERT INTO orders (customer_user_id, status, order_date, customer, manager, total_amount)
+            VALUES (@customerUserId, @status, @orderDate, @customer, @manager, @totalAmount)
+            RETURNING id";
 
-                cmd.Parameters.AddWithValue("userId", order.CustomerUserId);
-                cmd.Parameters.AddWithValue("status", order.Status);
-                cmd.Parameters.AddWithValue("date", order.OrderDate);
-                cmd.Parameters.AddWithValue("customer", order.CustomerName);
-                cmd.Parameters.AddWithValue("manager", (object)order.Manager ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("total", order.TotalAmount);
+                using var orderCommand = new NpgsqlCommand(insertOrderSql, connection, transaction);
 
-                var orderId = (int)await cmd.ExecuteScalarAsync();
+                // ИСПРАВЛЕНО: Правильная настройка параметров
+                orderCommand.Parameters.Add(new NpgsqlParameter("@customerUserId", NpgsqlDbType.Integer)
+                {
+                    Value = order.CustomerUserId
+                });
+                orderCommand.Parameters.Add(new NpgsqlParameter("@status", NpgsqlDbType.Text)
+                {
+                    Value = order.Status ?? "Новый"
+                });
+                orderCommand.Parameters.Add(new NpgsqlParameter("@orderDate", NpgsqlDbType.Timestamp)
+                {
+                    Value = order.OrderDate ?? DateTime.Now
+                });
+                orderCommand.Parameters.Add(new NpgsqlParameter("@customer", NpgsqlDbType.Text)
+                {
+                    Value = order.Customer ?? ""
+                });
+                orderCommand.Parameters.Add(new NpgsqlParameter("@manager", NpgsqlDbType.Text)
+                {
+                    Value = order.Manager ?? ""
+                });
+                orderCommand.Parameters.Add(new NpgsqlParameter("@totalAmount", NpgsqlDbType.Numeric)
+                {
+                    Value = order.TotalAmount
+                });
 
-                // Добавляем позиции заказа
+                var orderId = (int)await orderCommand.ExecuteScalarAsync();
+
+                // Добавление позиций заказа
                 foreach (var item in order.Items)
                 {
-                    var itemCmd = new NpgsqlCommand(@"
-                        INSERT INTO order_items (order_id, item_article, quantity, product_name, price) 
-                        VALUES (@orderId, @article, @qty, @name, @price)", connection, transaction);
+                    const string insertItemSql = @"
+                INSERT INTO order_items (order_id, item_article, quantity, product_name, price)
+                VALUES (@orderId, @itemArticle, @quantity, @productName, @price)";
 
-                    itemCmd.Parameters.AddWithValue("orderId", orderId);
-                    itemCmd.Parameters.AddWithValue("article", item.ProductArticle);
-                    itemCmd.Parameters.AddWithValue("qty", item.Quantity);
-                    itemCmd.Parameters.AddWithValue("name", item.ProductName);
-                    itemCmd.Parameters.AddWithValue("price", item.Price);
-                    await itemCmd.ExecuteNonQueryAsync();
+                    using var itemCommand = new NpgsqlCommand(insertItemSql, connection, transaction);
+                    itemCommand.Parameters.Add(new NpgsqlParameter("@orderId", NpgsqlDbType.Integer)
+                    {
+                        Value = orderId
+                    });
+                    itemCommand.Parameters.Add(new NpgsqlParameter("@itemArticle", NpgsqlDbType.Text)
+                    {
+                        Value = item.ProductArticle ?? ""
+                    });
+                    itemCommand.Parameters.Add(new NpgsqlParameter("@quantity", NpgsqlDbType.Integer)
+                    {
+                        Value = item.Quantity
+                    });
+                    itemCommand.Parameters.Add(new NpgsqlParameter("@productName", NpgsqlDbType.Text)
+                    {
+                        Value = item.ProductName ?? ""
+                    });
+                    itemCommand.Parameters.Add(new NpgsqlParameter("@price", NpgsqlDbType.Numeric)
+                    {
+                        Value = item.Price
+                    });
+
+                    await itemCommand.ExecuteNonQueryAsync();
                 }
 
                 await transaction.CommitAsync();
                 return orderId;
             }
-            catch (Exception ex)
+            catch
             {
                 await transaction.RollbackAsync();
-                throw new Exception($"Ошибка создания заказа: {ex.Message}", ex);
+                throw;
             }
         }
+
 
         // Обновить статус заказа
         public async Task UpdateOrderStatusAsync(int orderId, string status, string manager = null)

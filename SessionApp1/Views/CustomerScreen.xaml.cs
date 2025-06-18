@@ -77,5 +77,14 @@ namespace SessionApp1.Views
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+
+        private async void Profile_Click(object sender, RoutedEventArgs e)
+        {
+          
+                var mainWindow = (MainWindow)Application.Current.MainWindow;
+                mainWindow.NavigateToPage(new LoginPage());
+            
+    }
+        
     }
 }

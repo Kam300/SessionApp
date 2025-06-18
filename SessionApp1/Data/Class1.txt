@@ -214,6 +214,17 @@ CREATE TABLE orders (
     total_amount NUMERIC(12, 2)
 );
 
+-- Добавляем недостающие поля в таблицу orders
+ALTER TABLE orders 
+ADD COLUMN IF NOT EXISTS customer_user_id INT REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Новый';
+
+-- Обновляем структуру order_items для совместимости с приложением
+ALTER TABLE order_items 
+ADD COLUMN IF NOT EXISTS product_name TEXT,
+ADD COLUMN IF NOT EXISTS price NUMERIC(12, 2);
+
+
 
 
 

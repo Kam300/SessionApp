@@ -16,6 +16,8 @@
                     FontSize="16" Click="OpenCatalog_Click"/>
             <Button Content="Мои заказы" Width="200" Height="50" Margin="10" 
                     FontSize="16" Click="MyOrders_Click"/>
-            </StackPanel>
+            <Button Content="Выйти" Width="200" Height="50" Margin="10" 
+                    FontSize="16" Click="Profile_Click"/>
+        </StackPanel>
     </Grid>
 </UserControl>

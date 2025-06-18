@@ -5,15 +5,12 @@
         public int Id { get; set; }
         public int? OrderNumber { get; set; }
         public string Stage { get; set; } = "";
-        public DateTime? OrderDate { get; set; }
+        public DateTime? OrderDate { get; set; } = DateTime.Now;
         public string Customer { get; set; } = "";
+        public string CustomerName { get; set; } = ""; // ДОБАВЬТЕ ЭТО СВОЙСТВО
         public string Manager { get; set; } = "";
         public decimal TotalAmount { get; set; }
-
-        // ДОБАВЬТЕ ЭТИ СВОЙСТВА:
         public int CustomerUserId { get; set; }
-
-        public string CustomerName { get; set; }
         public string Status { get; set; } = "Новый";
         public List<OrderItem> Items { get; set; } = new List<OrderItem>();
     }
