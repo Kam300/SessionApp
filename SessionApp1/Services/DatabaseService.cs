@@ -538,6 +538,38 @@ namespace SessionApp1.Services
             return materialsWithUnits.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Name);
         }
 
+        public async Task<int> CreateOrderAsync(Order order)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                using var command = new NpgsqlCommand(@"
+            INSERT INTO orders (order_number, stage, order_date, customer, manager, total_amount)
+            VALUES (@order_number, @stage, @order_date, @customer, @manager, @total_amount)
+            RETURNING id", connection);
+
+                command.Parameters.AddWithValue("order_number", (object)order.OrderNumber ?? DBNull.Value);
+                command.Parameters.AddWithValue("stage", (object)order.Stage ?? DBNull.Value);
+                command.Parameters.AddWithValue("order_date", (object)order.OrderDate ?? DBNull.Value);
+                command.Parameters.AddWithValue("customer", (object)order.Customer ?? DBNull.Value);
+                command.Parameters.AddWithValue("manager", (object)order.Manager ?? DBNull.Value);
+                command.Parameters.AddWithValue("total_amount", order.TotalAmount);
+
+                var orderId = (int)await command.ExecuteScalarAsync();
+                return orderId;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка создания заказа: {ex.Message}", ex);
+            }
+        }
+
+
+
+
     }
+
 
 }
