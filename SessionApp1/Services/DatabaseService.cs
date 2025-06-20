@@ -11,6 +11,8 @@ namespace SessionApp1.Services
     {
         private readonly string _connectionString;
 
+        public string ConnectionString => _connectionString;
+
         public DatabaseService()
         {
             _connectionString = "Host=localhost;Database=postgres;Username=postgres;Password=00000000;Port=5432";

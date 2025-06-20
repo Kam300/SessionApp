@@ -33,10 +33,5 @@ namespace SessionApp1.Models
         }
     }
 
-    public class FittingStock
-    {
-        public string BatchId { get; set; } = string.Empty;
-        public string FittingArticle { get; set; } = string.Empty;
-        public int Quantity { get; set; }
-    }
+    
 }

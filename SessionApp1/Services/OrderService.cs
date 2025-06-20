@@ -1,4 +1,4 @@
-﻿using Npgsql;
+using Npgsql;
 using NpgsqlTypes;
 using SessionApp1.Models;
 using System;
@@ -253,6 +253,117 @@ namespace SessionApp1.Services
             {
                 System.Diagnostics.Debug.WriteLine($"Ошибка загрузки позиций заказов: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Получает список заказов за указанный период для страницы списка заказов
+        /// </summary>
+        public async Task<List<OrderListItem>> GetOrdersAsync(DateTime startDate, DateTime endDate)
+        {
+            var orders = new List<OrderListItem>();
+
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = @"
+                    SELECT o.id, o.order_date, o.status, 
+                           u.fullname as customer_name, o.manager as manager_name,
+                           (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as total_items
+                    FROM orders o
+                    LEFT JOIN users u ON o.customer_user_id = u.id
+                    WHERE o.order_date BETWEEN @startDate AND @endDate
+                    ORDER BY o.order_date DESC";
+
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("startDate", startDate);
+                command.Parameters.AddWithValue("endDate", endDate);
+
+                using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var orderId = reader.GetInt32(reader.GetOrdinal("id"));
+                    var orderStatus = reader.IsDBNull(reader.GetOrdinal("status")) ? 
+                        OrderStatus.New : 
+                        OrderStatusHelper.GetStatusFromString(reader.GetString(reader.GetOrdinal("status")));
+                    
+                    var order = new OrderListItem
+                    {
+                        Id = orderId,
+                        OrderNumber = orderId.ToString(), // Используем ID как номер заказа
+                        OrderDate = reader.GetDateTime(reader.GetOrdinal("order_date")),
+                        Status = orderStatus,
+                        CustomerName = reader.IsDBNull(reader.GetOrdinal("customer_name")) ? 
+                            "Не указан" : 
+                            reader.GetString(reader.GetOrdinal("customer_name")),
+                        ManagerName = reader.IsDBNull(reader.GetOrdinal("manager_name")) ? 
+                            "Не назначен" : 
+                            reader.GetString(reader.GetOrdinal("manager_name")),
+                        TotalItems = reader.GetInt32(reader.GetOrdinal("total_items"))
+                    };
+
+                    orders.Add(order);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка загрузки списка заказов: {ex.Message}", ex);
+            }
+
+            return orders;
+        }
+
+        /// <summary>
+        /// Получает детальную информацию о заказе по его ID для страницы списка заказов
+        /// </summary>
+        public async Task<OrderListItem> GetOrderByIdForListAsync(int orderId)
+        {
+            try
+            {
+                using var connection = new NpgsqlConnection(_connectionString);
+                await connection.OpenAsync();
+
+                string query = @"
+                    SELECT o.id, o.order_date, o.status, 
+                           u.fullname as customer_name, o.manager as manager_name,
+                           (SELECT COUNT(*) FROM order_items WHERE order_id = o.id) as total_items
+                    FROM orders o
+                    LEFT JOIN users u ON o.customer_user_id = u.id
+                    WHERE o.id = @orderId";
+
+                using var command = new NpgsqlCommand(query, connection);
+                command.Parameters.AddWithValue("orderId", orderId);
+
+                using var reader = await command.ExecuteReaderAsync();
+                if (await reader.ReadAsync())
+                {
+                    var orderStatus = reader.IsDBNull(reader.GetOrdinal("status")) ? 
+                        OrderStatus.New : 
+                        OrderStatusHelper.GetStatusFromString(reader.GetString(reader.GetOrdinal("status")));
+                    
+                    return new OrderListItem
+                    {
+                        Id = orderId,
+                        OrderNumber = orderId.ToString(), // Используем ID как номер заказа
+                        OrderDate = reader.GetDateTime(reader.GetOrdinal("order_date")),
+                        Status = orderStatus,
+                        CustomerName = reader.IsDBNull(reader.GetOrdinal("customer_name")) ? 
+                            "Не указан" : 
+                            reader.GetString(reader.GetOrdinal("customer_name")),
+                        ManagerName = reader.IsDBNull(reader.GetOrdinal("manager_name")) ? 
+                            "Не назначен" : 
+                            reader.GetString(reader.GetOrdinal("manager_name")),
+                        TotalItems = reader.GetInt32(reader.GetOrdinal("total_items"))
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Ошибка загрузки информации о заказе: {ex.Message}", ex);
+            }
+
+            return null;
         }
     }
 }

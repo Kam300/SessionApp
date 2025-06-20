@@ -1,0 +1,161 @@
+<Page x:Class="SessionApp1.Pages.InventoryPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:SessionApp1.Pages"
+      mc:Ignorable="d" 
+      d:DesignHeight="768" d:DesignWidth="1024"
+      Title="Инвентаризация" Background="#F0F0F0">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <TextBlock Grid.Row="0" Text="Инвентаризация" FontSize="24" FontWeight="Bold" Margin="20,20,0,10"/>
+
+        <!-- Информация о документе -->
+        <Grid Grid.Row="1" Margin="20,0,20,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Grid.Column="0" Text="Номер документа:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox Grid.Row="0" Grid.Column="1" x:Name="DocumentNumberTextBox" IsReadOnly="True" Margin="0,5,20,5" Padding="5"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="2" Text="Дата:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <DatePicker Grid.Row="0" Grid.Column="3" x:Name="DocumentDatePicker" Margin="0,5,20,5" SelectedDateChanged="DocumentDatePicker_SelectedDateChanged"/>
+
+            <TextBlock Grid.Row="0" Grid.Column="4" Text="Кладовщик:" VerticalAlignment="Center" Margin="0,0,10,0"/>
+            <TextBox Grid.Row="0" Grid.Column="5" x:Name="WarehouseKeeperTextBox" Margin="0,5,0,5" Padding="5"/>
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="6" x:Name="WarningTextBlock" Foreground="Red" FontWeight="Bold" Margin="0,5,0,5" Visibility="Collapsed"/>
+        </Grid>
+
+        <!-- Таблица материалов -->
+        <DataGrid Grid.Row="2" x:Name="InventoryItemsDataGrid" Margin="20,0,20,10" AutoGenerateColumns="False" 
+                  CanUserAddRows="False" CanUserDeleteRows="False" CanUserReorderColumns="False"
+                  CanUserResizeRows="False" CanUserSortColumns="True" AlternatingRowBackground="#F5F5F5"
+                  CellEditEnding="InventoryItemsDataGrid_CellEditEnding">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Артикул" Binding="{Binding MaterialArticle}" IsReadOnly="True" Width="100"/>
+                <DataGridTextColumn Header="Наименование" Binding="{Binding MaterialName}" IsReadOnly="True" Width="*"/>
+                <DataGridTextColumn Header="Тип" Binding="{Binding MaterialType}" IsReadOnly="True" Width="80">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Text" Value="{Binding MaterialType}"/>
+                            <Setter Property="ToolTip">
+                                <Setter.Value>
+                                    <MultiBinding StringFormat="{}Тип материала: {0}">
+                                        <Binding Path="MaterialType" Converter="{StaticResource MaterialTypeConverter}"/>
+                                    </MultiBinding>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Учетное кол-во" Binding="{Binding AccountingQuantity, StringFormat=N3}" IsReadOnly="True" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Фактическое кол-во" Binding="{Binding ActualQuantity, StringFormat=N3}" Width="140">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                    <DataGridTextColumn.EditingElementStyle>
+                        <Style TargetType="TextBox">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.EditingElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Разница" Binding="{Binding DifferenceQuantity, StringFormat=N3}" IsReadOnly="True" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Foreground" Value="{Binding DifferenceQuantity, Converter={StaticResource DifferenceColorConverter}}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Ед. изм." Binding="{Binding Unit}" IsReadOnly="True" Width="80"/>
+                <DataGridTextColumn Header="Цена" Binding="{Binding Price, StringFormat=N2}" IsReadOnly="True" Width="100">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Учетная сумма" Binding="{Binding AccountingAmount, StringFormat=N2}" IsReadOnly="True" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Фактическая сумма" Binding="{Binding ActualAmount, StringFormat=N2}" IsReadOnly="True" Width="140">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+                <DataGridTextColumn Header="Разница суммы" Binding="{Binding DifferenceAmount, StringFormat=N2}" IsReadOnly="True" Width="120">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="HorizontalAlignment" Value="Right"/>
+                            <Setter Property="Foreground" Value="{Binding DifferenceAmount, Converter={StaticResource DifferenceColorConverter}}"/>
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Итоги и кнопки -->
+        <Grid Grid.Row="3" Margin="20,0,20,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <TextBlock Text="Учетная сумма:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="TotalAccountingAmountTextBlock" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,20,0"/>
+                
+                <TextBlock Text="Фактическая сумма:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="TotalActualAmountTextBlock" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,20,0"/>
+                
+                <TextBlock Text="Разница:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="TotalDifferenceAmountTextBlock" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,20,0"/>
+                
+                <TextBlock Text="Процент расхождения:" VerticalAlignment="Center" FontWeight="Bold" Margin="0,0,10,0"/>
+                <TextBlock x:Name="DifferencePercentTextBlock" VerticalAlignment="Center" FontWeight="Bold"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button x:Name="SaveButton" Content="Сохранить" Width="120" Height="30" Margin="0,0,10,0" Click="SaveButton_Click"/>
+                <Button x:Name="ProcessButton" Content="Провести" Width="120" Height="30" Margin="0,0,10,0" Click="ProcessButton_Click"/>
+                <Button x:Name="ApproveButton" Content="Утвердить" Width="120" Height="30" Margin="0,0,10,0" Click="ApproveButton_Click" Visibility="Collapsed"/>
+                <Button x:Name="PrintButton" Content="Печать" Width="120" Height="30" Margin="0,0,10,0" Click="PrintButton_Click"/>
+                <Button x:Name="CancelButton" Content="Отмена" Width="120" Height="30" Click="CancelButton_Click"/>
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

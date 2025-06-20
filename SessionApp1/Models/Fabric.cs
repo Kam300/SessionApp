@@ -31,13 +31,6 @@ namespace SessionApp1.Models
     }
 
 
-    public class FabricStock
-    {
-        public string RollId { get; set; }
-        public string FabricArticle { get; set; }
-        public int LengthMm { get; set; }
-        public int WidthMm { get; set; }
-        public string Unit { get; set; }
-    }
+    
 }
 

@@ -30,7 +30,16 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                 <Button x:Name="ProductsButton" Content="Изделия" 
                         Style="{StaticResource StandardButton}"
-                        Click="ProductsButton_Click"/>
+                        Click="ProductsButton_Click" Margin="0,0,10,0"/>
+                <Button x:Name="StockReportButton" Content="Остатки материалов" 
+                        Style="{StaticResource StandardButton}"
+                        Click="StockReportButton_Click" Margin="0,0,10,0"/>
+                <Button x:Name="MovementReportButton" Content="Движение материалов" 
+                        Style="{StaticResource StandardButton}"
+                        Click="MovementReportButton_Click" Margin="0,0,10,0"/>
+                <Button x:Name="OrderListButton" Content="Список заказов" 
+                        Style="{StaticResource StandardButton}"
+                        Click="OrderListButton_Click"/>
             </StackPanel>
         </Border>
 
